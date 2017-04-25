@@ -2,6 +2,7 @@ import numpy as np
 
 import ptan
 from ptan.common import env_params
+from ptan.actions.epsilon_greedy import ActionSelectorEpsilonGreedy
 
 import torch
 import torch.nn as nn
@@ -24,8 +25,11 @@ if __name__ == "__main__":
 
     loss_fn = nn.MSELoss(size_average=False)
 
+    action_selector = ActionSelectorEpsilonGreedy(epsilon=0.05, params=params)
+
     test_s = Variable(torch.from_numpy(np.array([env.reset()], dtype=np.float32)))
     print(model(test_s))
+    print(action_selector(model(test_s)))
     print(loss_fn(model(test_s), Variable(torch.Tensor([[1.0, 0.0, 2.0]]))))
     
     pass

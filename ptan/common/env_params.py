@@ -9,10 +9,13 @@ class EnvParams:
     """
     Simple container for various environment options
     """
-    def __init__(self, env):
-        assert isinstance(env, gym.Env)
-        self.n_actions = env.action_space.n
-        self.state_shape = env.observation_space.shape
+    def __init__(self, n_actions, state_shape):
+        self.n_actions = n_actions
+        self.state_shape = state_shape
+
+    @classmethod
+    def from_env(cls, env):
+        return EnvParams(n_actions=env.action_space.n, state_shape=env.observation_space.shape)
 
 
 def register(params):

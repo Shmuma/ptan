@@ -5,9 +5,9 @@ import torch.nn as nn
 from ..common import env_params
 
 
-class SelectAction(nn.Module):
+class ActionSelectorEpsilonGreedy(nn.Module):
     def __init__(self, epsilon=0.05, params=env_params.get()):
-        super(SelectAction, self).__init__()
+        super(ActionSelectorEpsilonGreedy, self).__init__()
         self.epsilon = epsilon
         self.params = params
 
@@ -16,5 +16,5 @@ class SelectAction(nn.Module):
         res = q_vals.max(dim=1)[1]
         for i in range(batch_size):
             if np.random.rand() < self.epsilon:
-                res[i] = np.random.choice(params.n_actions)
+                res[i] = np.random.choice(self.params.n_actions)
         return res
