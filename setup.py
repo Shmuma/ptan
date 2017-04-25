@@ -1,6 +1,5 @@
 """
 PTAN stands for PyTorch AgentNet -- reimplementation of AgentNet library for pytorch
-
 """
 import setuptools
 
