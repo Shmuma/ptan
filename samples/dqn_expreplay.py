@@ -1,8 +1,8 @@
 import numpy as np
 
-import ptan
 from ptan.common import env_params
 from ptan.actions.epsilon_greedy import ActionSelectorEpsilonGreedy
+from ptan.experience import ExperienceReplayBuffer
 
 import torch
 import torch.nn as nn
@@ -14,7 +14,7 @@ import gym
 
 if __name__ == "__main__":
     env = gym.make("Acrobot-v1")
-    params = env_params.EnvParams(env)
+    params = env_params.EnvParams.from_env(env)
     env_params.register(params)
 
     model = nn.Sequential(
@@ -31,5 +31,8 @@ if __name__ == "__main__":
     print(model(test_s))
     print(action_selector(model(test_s)))
     print(loss_fn(model(test_s), Variable(torch.Tensor([[1.0, 0.0, 2.0]]))))
-    
+
+    # TODO: implement env pooling
+    exp_replay = ExperienceReplayBuffer(env, params, buffer_size=100)
+
     pass
