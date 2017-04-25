@@ -1,6 +1,7 @@
+__all__ = ('EnvParams', 'register', 'get')
+
 import gym
 
-__all__ = ('EnvParams', 'register', 'get')
 _current_env_params = None
 
 
