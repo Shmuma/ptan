@@ -41,7 +41,7 @@ class ExperienceSource:
                     history.popleft()
                 yield tuple(history)
                 state = self.env.reset()
-                history = []
+                history.clear()
 
 
 class ExperienceReplayBuffer:
