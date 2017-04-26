@@ -16,7 +16,7 @@ class ExperienceSource:
         """
         Create simple experience source
         :param env: environment to be used
-        :param agent: callable to convert state into action to take
+        :param agent: callable to convert batch of states into actions to take
         :param steps_count: count of steps to track for every experience chain
         """
         self.env = env
@@ -27,7 +27,7 @@ class ExperienceSource:
         state = self.env.reset()
         history = deque()
         while True:
-            action = self.agent(state)
+            action = self.agent(np.expand_dims(state, axis=0))[0][0]
             next_state, r, is_done, _ = self.env.step(action)
             history.append(Experience(state=state, action=action, reward=r, done=is_done))
             if len(history) > self.steps_count+1:

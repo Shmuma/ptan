@@ -1,7 +1,15 @@
+import numpy as np
 from unittest import TestCase
 
 import gym
 from ptan import experience
+
+
+def dummy_agent(states):
+    """
+    Stupid agent returning zero action for any state
+    """
+    return np.zeros(shape=(states.shape[0], 1), dtype=np.int32)
 
 
 class TestExperienceSource(TestCase):
@@ -9,12 +17,8 @@ class TestExperienceSource(TestCase):
     def setUpClass(cls):
         cls.env = gym.make("MountainCar-v0")
 
-    @staticmethod
-    def agent_zero(_):
-        return 0
-
     def test_one_step(self):
-        exp_source = experience.ExperienceSource(self.env, self.agent_zero, steps_count=1)
+        exp_source = experience.ExperienceSource(self.env, dummy_agent, steps_count=1)
         for exp in exp_source:
             self.assertEqual(2, len(exp))
             self.assertIsInstance(exp, tuple)
@@ -24,14 +28,14 @@ class TestExperienceSource(TestCase):
             break
 
     def test_two_steps(self):
-        exp_source = experience.ExperienceSource(self.env, self.agent_zero, steps_count=2)
+        exp_source = experience.ExperienceSource(self.env, dummy_agent, steps_count=2)
         for exp in exp_source:
             self.assertEqual(3, len(exp))
             break
 
     def test_short_game(self):
         env = gym.make('CartPole-v0')
-        exp_source = experience.ExperienceSource(env, self.agent_zero, steps_count=1)
+        exp_source = experience.ExperienceSource(env, dummy_agent, steps_count=1)
         for step, exp in enumerate(exp_source):
             self.assertIsInstance(exp, tuple)
             self.assertIsInstance(exp[0], experience.Experience)
@@ -49,7 +53,7 @@ class TestExperienceReplayBuffer(TestCase):
     @classmethod
     def setUpClass(cls):
         env = gym.make("MountainCar-v0")
-        cls.source = experience.ExperienceSource(env, lambda _: 0)
+        cls.source = experience.ExperienceSource(env, agent=dummy_agent)
 
     def test_len(self):
         buf = experience.ExperienceReplayBuffer(self.source, buffer_size=2)
