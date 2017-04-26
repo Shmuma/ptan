@@ -12,6 +12,7 @@ from torch.autograd import Variable
 import gym
 
 GAMMA = 0.99
+BATCH = 128
 
 
 if __name__ == "__main__":
@@ -20,13 +21,15 @@ if __name__ == "__main__":
     env_params.register(params)
 
     model = nn.Sequential(
-        nn.Linear(params.state_shape[0], 50),
+        nn.Linear(params.state_shape[0], 100),
         nn.ReLU(),
-        nn.Linear(50, params.n_actions)
+        nn.Linear(100, 100),
+        nn.ReLU(),
+        nn.Linear(100, params.n_actions)
     )
 
     loss_fn = nn.MSELoss(size_average=False)
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
     action_selector = ActionSelectorEpsilonGreedy(epsilon=0.05, params=params)
 
@@ -48,8 +51,8 @@ if __name__ == "__main__":
     # print(action_selector(model(test_s)))
     # print(loss_fn(model(test_s), Variable(torch.Tensor([[1.0, 0.0, 2.0]]))))
 
-    exp_source = experience.ExperienceSource(env=env, agent=agent, steps_count=1)
-    exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=1000)
+    exp_source = experience.ExperienceSource(env=env, agent=agent, steps_count=10)
+    exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=2000)
 
     def batch_to_train(batch):
         """
@@ -77,7 +80,7 @@ if __name__ == "__main__":
 
     for idx in range(100000):
         exp_replay.populate(500)
-        for batch in exp_replay.batches(128):
+        for batch in exp_replay.batches(BATCH):
             optimizer.zero_grad()
             # populate buffer
             states, q_vals = batch_to_train(batch)
@@ -86,8 +89,11 @@ if __name__ == "__main__":
             l = loss_fn(model(states), q_vals)
             l.backward()
             optimizer.step()
+        action_selector.epsilon *= 0.995
         if idx % 10 == 0:
             total_rewards = exp_source.pop_total_rewards()
             if total_rewards:
-                print("%d: Mean reward: %s" % (idx, np.mean(total_rewards)))
+                print("%d: Mean reward: %s, epsilon: %.4f" % (idx, np.mean(total_rewards), action_selector.epsilon))
+            else:
+                print("%d: no reward info, epsilon: %.4f" % (idx, action_selector.epsilon))
     pass
