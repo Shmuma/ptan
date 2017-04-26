@@ -22,13 +22,16 @@ class ExperienceSource:
         self.env = env
         self.agent = agent
         self.steps_count = steps_count
+        self.total_rewards = []
 
     def __iter__(self):
         state = self.env.reset()
         history = deque()
+        total_reward = 0.0
         while True:
             action = self.agent(np.expand_dims(state, axis=0))[0][0]
             next_state, r, is_done, _ = self.env.step(action)
+            total_reward += r
             history.append(Experience(state=state, action=action, reward=r, done=is_done))
             if len(history) > self.steps_count+1:
                 history.popleft()
@@ -40,8 +43,15 @@ class ExperienceSource:
                 if len(history) > self.steps_count+1:
                     history.popleft()
                 yield tuple(history)
+                self.total_rewards.append(total_reward)
+                total_reward = 0.0
                 state = self.env.reset()
                 history.clear()
+
+    def pop_total_rewards(self):
+        r = self.total_rewards
+        self.total_rewards = []
+        return r
 
 
 class ExperienceReplayBuffer:

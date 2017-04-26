@@ -15,7 +15,7 @@ GAMMA = 0.99
 
 
 if __name__ == "__main__":
-    env = gym.make("CartPole-v0")
+    env = gym.make("MountainCar-v0").env
     params = env_params.EnvParams.from_env(env)
     env_params.register(params)
 
@@ -77,7 +77,7 @@ if __name__ == "__main__":
 
     for idx in range(100000):
         exp_replay.populate(500)
-        for batch in exp_replay.batches(50):
+        for batch in exp_replay.batches(128):
             optimizer.zero_grad()
             # populate buffer
             states, q_vals = batch_to_train(batch)
@@ -87,5 +87,7 @@ if __name__ == "__main__":
             l.backward()
             optimizer.step()
         if idx % 10 == 0:
-            print("%d: Mean Q: %s" % (idx, q_vals.data.mean()))
+            total_rewards = exp_source.pop_total_rewards()
+            if total_rewards:
+                print("%d: Mean reward: %s" % (idx, np.mean(total_rewards)))
     pass
