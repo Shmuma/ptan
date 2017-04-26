@@ -16,20 +16,22 @@ BATCH = 128
 
 
 if __name__ == "__main__":
-    env = gym.make("MountainCar-v0").env
+    env = gym.make("CartPole-v0").env
+#    env = gym.wrappers.Monitor(env, "res")
+
     params = env_params.EnvParams.from_env(env)
     env_params.register(params)
 
     model = nn.Sequential(
         nn.Linear(params.state_shape[0], 100),
         nn.ReLU(),
-        nn.Linear(100, 100),
-        nn.ReLU(),
+        # nn.Linear(100, 100),
+        # nn.ReLU(),
         nn.Linear(100, params.n_actions)
     )
 
     loss_fn = nn.MSELoss(size_average=False)
-    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = optim.RMSprop(model.parameters(), lr=1e-3)
 
     action_selector = ActionSelectorEpsilonGreedy(epsilon=0.05, params=params)
 
@@ -51,8 +53,8 @@ if __name__ == "__main__":
     # print(action_selector(model(test_s)))
     # print(loss_fn(model(test_s), Variable(torch.Tensor([[1.0, 0.0, 2.0]]))))
 
-    exp_source = experience.ExperienceSource(env=env, agent=agent, steps_count=10)
-    exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=2000)
+    exp_source = experience.ExperienceSource(env=env, agent=agent, steps_count=1)
+    exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=1000)
 
     def batch_to_train(batch):
         """
@@ -78,8 +80,8 @@ if __name__ == "__main__":
             q_vals.append(train_q)
         return torch.from_numpy(np.array(states, dtype=np.float32)), torch.cat(q_vals)
 
-    for idx in range(100000):
-        exp_replay.populate(500)
+    for idx in range(1000):
+        exp_replay.populate(200)
         for batch in exp_replay.batches(BATCH):
             optimizer.zero_grad()
             # populate buffer
