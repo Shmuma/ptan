@@ -1,6 +1,7 @@
+import argparse
 import numpy as np
 
-from ptan.common import env_params
+from ptan.common import env_params, runfile
 from ptan.actions.epsilon_greedy import ActionSelectorEpsilonGreedy
 from ptan import experience
 
@@ -16,7 +17,13 @@ BATCH = 128
 
 
 if __name__ == "__main__":
-    env = gym.make("CartPole-v0").env
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--runfile", required=True, help="Name of the runfile to use")
+    args = parser.parse_args()
+
+    run = runfile.RunFile(args.runfile)
+
+    env = gym.make(run.get("defaults", "env")).env
 #    env = gym.wrappers.Monitor(env, "res")
 
     params = env_params.EnvParams.from_env(env)
@@ -31,9 +38,9 @@ if __name__ == "__main__":
     )
 
     loss_fn = nn.MSELoss(size_average=False)
-    optimizer = optim.RMSprop(model.parameters(), lr=1e-3)
+    optimizer = optim.RMSprop(model.parameters(), lr=run.getfloat("learning", "lr"))
 
-    action_selector = ActionSelectorEpsilonGreedy(epsilon=0.05, params=params)
+    action_selector = ActionSelectorEpsilonGreedy(epsilon=run.getfloat("defaults", "epsilon"), params=params)
 
     def agent(states):
         """
@@ -53,8 +60,8 @@ if __name__ == "__main__":
     # print(action_selector(model(test_s)))
     # print(loss_fn(model(test_s), Variable(torch.Tensor([[1.0, 0.0, 2.0]]))))
 
-    exp_source = experience.ExperienceSource(env=env, agent=agent, steps_count=1)
-    exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=1000)
+    exp_source = experience.ExperienceSource(env=env, agent=agent, steps_count=run.getint("defaults", "n_steps"))
+    exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
 
     def batch_to_train(batch):
         """
@@ -81,8 +88,8 @@ if __name__ == "__main__":
         return torch.from_numpy(np.array(states, dtype=np.float32)), torch.cat(q_vals)
 
     for idx in range(1000):
-        exp_replay.populate(200)
-        for batch in exp_replay.batches(BATCH):
+        exp_replay.populate(run.getint("exp_buffer", "populate"))
+        for batch in exp_replay.batches(run.getint("learning", "batch_size")):
             optimizer.zero_grad()
             # populate buffer
             states, q_vals = batch_to_train(batch)
@@ -91,7 +98,7 @@ if __name__ == "__main__":
             l = loss_fn(model(states), q_vals)
             l.backward()
             optimizer.step()
-        action_selector.epsilon *= 0.995
+        action_selector.epsilon *= run.getfloat("defaults", "epsilon_decay")
         if idx % 10 == 0:
             total_rewards = exp_source.pop_total_rewards()
             if total_rewards:
