@@ -96,7 +96,7 @@ if __name__ == "__main__":
         if idx % 10 == 0:
             total_rewards = exp_source.pop_total_rewards()
             if total_rewards:
-                print("%d: Mean reward: %s, epsilon: %.4f" % (idx, np.mean(total_rewards), action_selector.epsilon))
+                print("%d: Mean reward: %.2f, epsilon: %.4f" % (idx, np.mean(total_rewards), action_selector.epsilon))
             else:
                 print("%d: no reward info, epsilon: %.4f" % (idx, action_selector.epsilon))
     pass
