@@ -54,12 +54,6 @@ if __name__ == "__main__":
         actions = action_selector(q)
         return actions.data.numpy()
 
-    #
-    # test_s = Variable(torch.from_numpy(np.array([env.reset()], dtype=np.float32)))
-    # print(model(test_s))
-    # print(action_selector(model(test_s)))
-    # print(loss_fn(model(test_s), Variable(torch.Tensor([[1.0, 0.0, 2.0]]))))
-
     exp_source = experience.ExperienceSource(env=env, agent=agent, steps_count=run.getint("defaults", "n_steps"))
     exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
 
