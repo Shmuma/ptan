@@ -33,15 +33,15 @@ if __name__ == "__main__":
     env_params.register(params)
 
     model = nn.Sequential(
-        nn.Linear(params.state_shape[0], 100),
+        nn.Linear(params.state_shape[0], 50),
         nn.ReLU(),
         # nn.Linear(100, 100),
         # nn.ReLU(),
-        nn.Linear(100, params.n_actions)
+        nn.Linear(50, params.n_actions)
     )
 
     loss_fn = nn.MSELoss(size_average=False)
-    optimizer = optim.RMSprop(model.parameters(), lr=run.getfloat("learning", "lr"))
+    optimizer = optim.Adam(model.parameters(), lr=run.getfloat("learning", "lr"))
 
     action_selector = ActionSelectorEpsilonGreedy(epsilon=run.getfloat("defaults", "epsilon"), params=params)
 

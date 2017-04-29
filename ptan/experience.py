@@ -86,6 +86,7 @@ class ExperienceReplayBuffer:
         """
         ofs = 0
         vals = list(self.buffer.values())
+        np.random.shuffle(vals)
         while (ofs+1)*batch_size <= len(self.buffer):
             yield vals[ofs*batch_size:(ofs+1)*batch_size]
             ofs += 1
