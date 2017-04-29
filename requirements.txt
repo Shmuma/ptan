@@ -38,8 +38,8 @@ simplegeneric==0.8.1
 six==1.10.0
 terminado==0.6
 testpath==0.3
-torch==0.1.11+b13b701
-torchvision==0.1.8
+torch
+torchvision
 tornado==4.5.1
 traitlets==4.3.2
 wcwidth==0.1.7
