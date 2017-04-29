@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import argparse
 import numpy as np
 
@@ -19,12 +20,14 @@ BATCH = 128
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--runfile", required=True, help="Name of the runfile to use")
+    parser.add_argument("-m", "--monitor", help="Use monitor and save it's data into given dir")
     args = parser.parse_args()
 
     run = runfile.RunFile(args.runfile)
 
     env = gym.make(run.get("defaults", "env")).env
-#    env = gym.wrappers.Monitor(env, "res")
+    if args.monitor:
+        env = gym.wrappers.Monitor(env, args.monitor)
 
     params = env_params.EnvParams.from_env(env)
     env_params.register(params)
@@ -96,8 +99,13 @@ if __name__ == "__main__":
         if idx % 10 == 0:
             total_rewards = exp_source.pop_total_rewards()
             if total_rewards:
+                mean_reward = np.mean(total_rewards)
                 print("%d: Mean reward: %.2f, done: %d, epsilon: %.4f" % (
-                    idx, np.mean(total_rewards), len(total_rewards), action_selector.epsilon))
+                    idx, mean_reward, len(total_rewards), action_selector.epsilon))
+                if mean_reward > run.getfloat("defaults", "stop_mean_reward", fallback=2*mean_reward):
+                    print("We've reached mean reward bound, exit")
+                    break
             else:
                 print("%d: no reward info, epsilon: %.4f" % (idx, action_selector.epsilon))
+    env.close()
     pass
