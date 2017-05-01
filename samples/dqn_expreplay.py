@@ -25,6 +25,7 @@ if __name__ == "__main__":
 
     run = runfile.RunFile(args.runfile)
 
+    cuda_enabled = run.getboolean("defaults", "cuda")
     env = gym.make(run.get("defaults", "env")).env
     if args.monitor:
         env = gym.wrappers.Monitor(env, args.monitor)
@@ -39,6 +40,8 @@ if __name__ == "__main__":
         # nn.ReLU(),
         nn.Linear(50, params.n_actions)
     )
+    if cuda_enabled:
+        model.cuda()
 
     loss_fn = nn.MSELoss(size_average=False)
     optimizer = optim.Adam(model.parameters(), lr=run.getfloat("learning", "lr"))
@@ -53,9 +56,11 @@ if __name__ == "__main__":
         """
         # TODO: move this into separate class
         v = Variable(torch.from_numpy(np.array(states, dtype=np.float32)))
+        if cuda_enabled:
+            v = v.cuda()
         q = model(v)
         actions = action_selector(q)
-        return actions.data.numpy()
+        return actions.data.cpu().numpy()
 
     exp_source = experience.ExperienceSource(env=env, agent=agent, steps_count=run.getint("defaults", "n_steps"))
     exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
@@ -72,6 +77,8 @@ if __name__ == "__main__":
             # calculate q_values for first and last state in experience sequence
             # first is needed for reference, last is used to approximate rest value
             v = Variable(torch.from_numpy(np.array([exps[0].state, exps[-1].state], dtype=np.float32)))
+            if cuda_enabled:
+                v = v.cuda()
             q = model(v)
             # accumulate total reward for the chain
             total_reward = 0.0 if exps[-1].done else q[1].data.max()
@@ -89,28 +96,31 @@ if __name__ == "__main__":
 
     for idx in range(10000):
         exp_replay.populate(run.getint("exp_buffer", "populate"))
-        batch = exp_replay.sample(run.getint("learning", "batch_size"))
-        optimizer.zero_grad()
 
-        # populate buffer
-        states, q_vals = batch_to_train(batch)
-        # ready to train
-        states, q_vals = Variable(states), Variable(q_vals)
-        l = loss_fn(model(states), q_vals)
-        losses.append(l.data[0])
-        mean_q.append(q_vals.mean().data[0])
-        l.backward()
-        optimizer.step()
+        for batch in exp_replay.batches(run.getint("learning", "batch_size")):
+            optimizer.zero_grad()
+
+            # populate buffer
+            states, q_vals = batch_to_train(batch)
+            # ready to train
+            states, q_vals = Variable(states), Variable(q_vals)
+            if cuda_enabled:
+                states = states.cuda()
+                q_vals = q_vals.cuda()
+            l = loss_fn(model(states), q_vals)
+            losses.append(l.data[0])
+            mean_q.append(q_vals.mean().data[0])
+            l.backward()
+            optimizer.step()
 
         action_selector.epsilon *= run.getfloat("defaults", "epsilon_decay")
 
-        if idx % 100 == 0:
+        if idx % 10 == 0:
             total_rewards = exp_source.pop_total_rewards()
             if total_rewards:
                 mean_reward = np.mean(total_rewards)
-                print("%d: Mean reward: %.2f, done: %d, epsilon: %.4f, losses: %.4f, mean_q: %.4f, buffer: %d" % (
-                    idx, mean_reward, len(total_rewards), action_selector.epsilon,
-                    np.mean(losses), np.mean(mean_q), len(exp_replay.buffer)
+                print("%d: Mean reward: %.2f, done: %d, epsilon: %.4f" % (
+                    idx, mean_reward, len(total_rewards), action_selector.epsilon
                 ))
                 if mean_reward > run.getfloat("defaults", "stop_mean_reward", fallback=2*mean_reward):
                     print("We've reached mean reward bound, exit")
