@@ -82,26 +82,36 @@ if __name__ == "__main__":
             train_q[exps[0].action] = total_reward
             states.append(train_state)
             q_vals.append(train_q)
-        return torch.from_numpy(np.array(states, dtype=np.float32)), torch.cat(q_vals)
+        return torch.from_numpy(np.array(states, dtype=np.float32)), torch.stack(q_vals)
 
-    for idx in range(1000):
+#    exp_replay.populate(1000)
+    losses = []
+
+    for idx in range(10000):
         exp_replay.populate(run.getint("exp_buffer", "populate"))
-        for batch in exp_replay.batches(run.getint("learning", "batch_size")):
-            optimizer.zero_grad()
-            # populate buffer
-            states, q_vals = batch_to_train(batch)
-            # ready to train
-            states, q_vals = Variable(states), Variable(q_vals)
-            l = loss_fn(model(states), q_vals)
-            l.backward()
-            optimizer.step()
-        action_selector.epsilon *= run.getfloat("defaults", "epsilon_decay")
-        if idx % 10 == 0:
+        batch = exp_replay.sample(run.getint("learning", "batch_size"))
+        optimizer.zero_grad()
+
+        # populate buffer
+        states, q_vals = batch_to_train(batch)
+        # ready to train
+        states, q_vals = Variable(states), Variable(q_vals)
+        l = loss_fn(model(states), q_vals)
+        losses.append(l.data[0])
+        l.backward()
+        optimizer.step()
+
+#        action_selector.epsilon *= run.getfloat("defaults", "epsilon_decay")
+        action_selector.epsilon = 0.05 + 0.95*np.exp(-idx/1000.0)
+
+        if idx % 100 == 0:
             total_rewards = exp_source.pop_total_rewards()
             if total_rewards:
                 mean_reward = np.mean(total_rewards)
-                print("%d: Mean reward: %.2f, done: %d, epsilon: %.4f" % (
-                    idx, mean_reward, len(total_rewards), action_selector.epsilon))
+                print("%d: Mean reward: %.2f, done: %d, epsilon: %.4f, losses: %.4f, buffer: %d" % (
+                    idx, mean_reward, len(total_rewards), action_selector.epsilon,
+                    np.mean(losses), len(exp_replay.buffer)
+                ))
                 if mean_reward > run.getfloat("defaults", "stop_mean_reward", fallback=2*mean_reward):
                     print("We've reached mean reward bound, exit")
                     break
