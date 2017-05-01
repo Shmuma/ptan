@@ -40,7 +40,7 @@ if __name__ == "__main__":
         nn.Linear(50, params.n_actions)
     )
 
-#    loss_fn = nn.MSELoss(size_average=False)
+    loss_fn = nn.MSELoss(size_average=False)
     optimizer = optim.Adam(model.parameters(), lr=run.getfloat("learning", "lr"))
 
     action_selector = ActionSelectorEpsilonGreedy(epsilon=run.getfloat("defaults", "epsilon"), params=params)
@@ -84,7 +84,6 @@ if __name__ == "__main__":
             q_vals.append(train_q)
         return torch.from_numpy(np.array(states, dtype=np.float32)), torch.stack(q_vals)
 
-#    exp_replay.populate(1000)
     losses = []
     mean_q = []
 
@@ -97,8 +96,7 @@ if __name__ == "__main__":
         states, q_vals = batch_to_train(batch)
         # ready to train
         states, q_vals = Variable(states), Variable(q_vals)
-#        l = loss_fn(model(states), q_vals)
-        l = ((model(states) - q_vals)**2).mean()
+        l = loss_fn(model(states), q_vals)
         losses.append(l.data[0])
         mean_q.append(q_vals.mean().data[0])
         l.backward()
