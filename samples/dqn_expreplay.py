@@ -14,7 +14,6 @@ from torch.autograd import Variable
 import gym
 
 GAMMA = 0.99
-BATCH = 128
 
 
 if __name__ == "__main__":
