@@ -40,7 +40,7 @@ if __name__ == "__main__":
         nn.Linear(50, params.n_actions)
     )
 
-    loss_fn = nn.MSELoss(size_average=False)
+#    loss_fn = nn.MSELoss(size_average=False)
     optimizer = optim.Adam(model.parameters(), lr=run.getfloat("learning", "lr"))
 
     action_selector = ActionSelectorEpsilonGreedy(epsilon=run.getfloat("defaults", "epsilon"), params=params)
@@ -86,6 +86,7 @@ if __name__ == "__main__":
 
 #    exp_replay.populate(1000)
     losses = []
+    mean_q = []
 
     for idx in range(10000):
         exp_replay.populate(run.getint("exp_buffer", "populate"))
@@ -96,8 +97,10 @@ if __name__ == "__main__":
         states, q_vals = batch_to_train(batch)
         # ready to train
         states, q_vals = Variable(states), Variable(q_vals)
-        l = loss_fn(model(states), q_vals)
+#        l = loss_fn(model(states), q_vals)
+        l = ((model(states) - q_vals)**2).mean()
         losses.append(l.data[0])
+        mean_q.append(q_vals.mean().data[0])
         l.backward()
         optimizer.step()
 
@@ -108,9 +111,9 @@ if __name__ == "__main__":
             total_rewards = exp_source.pop_total_rewards()
             if total_rewards:
                 mean_reward = np.mean(total_rewards)
-                print("%d: Mean reward: %.2f, done: %d, epsilon: %.4f, losses: %.4f, buffer: %d" % (
+                print("%d: Mean reward: %.2f, done: %d, epsilon: %.4f, losses: %.4f, mean_q: %.4f, buffer: %d" % (
                     idx, mean_reward, len(total_rewards), action_selector.epsilon,
-                    np.mean(losses), len(exp_replay.buffer)
+                    np.mean(losses), np.mean(mean_q), len(exp_replay.buffer)
                 ))
                 if mean_reward > run.getfloat("defaults", "stop_mean_reward", fallback=2*mean_reward):
                     print("We've reached mean reward bound, exit")
