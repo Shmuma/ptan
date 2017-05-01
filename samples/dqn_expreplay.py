@@ -102,8 +102,7 @@ if __name__ == "__main__":
         l.backward()
         optimizer.step()
 
-#        action_selector.epsilon *= run.getfloat("defaults", "epsilon_decay")
-        action_selector.epsilon = 0.05 + 0.95*np.exp(-idx/1000.0)
+        action_selector.epsilon *= run.getfloat("defaults", "epsilon_decay")
 
         if idx % 100 == 0:
             total_rewards = exp_source.pop_total_rewards()
