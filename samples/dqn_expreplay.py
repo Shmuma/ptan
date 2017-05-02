@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     run = runfile.RunFile(args.runfile)
 
-    cuda_enabled = run.getboolean("defaults", "cuda")
+    cuda_enabled = run.getboolean("defaults", "cuda", fallback=False)
     env = gym.make(run.get("defaults", "env")).env
     if args.monitor:
         env = gym.wrappers.Monitor(env, args.monitor)
@@ -121,7 +121,7 @@ if __name__ == "__main__":
                 print("%d: Mean reward: %.2f, done: %d, epsilon: %.4f" % (
                     idx, mean_reward, len(total_rewards), action_selector.epsilon
                 ))
-                if mean_reward > run.getfloat("defaults", "stop_mean_reward", fallback=2*mean_reward):
+                if mean_reward > run.getfloat("defaults", "stop_mean_reward", fallback=2*abs(mean_reward)):
                     print("We've reached mean reward bound, exit")
                     break
             else:
