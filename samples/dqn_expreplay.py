@@ -2,7 +2,7 @@
 import argparse
 import numpy as np
 
-from ptan.common import env_params, runfile
+from ptan.common import env_params, runfile, utils
 from ptan.actions.epsilon_greedy import ActionSelectorEpsilonGreedy
 from ptan import experience
 
@@ -90,8 +90,7 @@ if __name__ == "__main__":
             q_vals.append(train_q)
         return torch.from_numpy(np.array(states, dtype=np.float32)), torch.stack(q_vals)
 
-    losses = []
-    mean_q = []
+    reward_sma = utils.SMAQueue(run.getint("stop", "mean_games", fallback=100))
 
     for idx in range(10000):
         exp_replay.populate(run.getint("exp_buffer", "populate"))
@@ -107,8 +106,6 @@ if __name__ == "__main__":
                 states = states.cuda()
                 q_vals = q_vals.cuda()
             l = loss_fn(model(states), q_vals)
-            losses.append(l.data[0])
-            mean_q.append(q_vals.mean().data[0])
             l.backward()
             optimizer.step()
 
@@ -116,15 +113,15 @@ if __name__ == "__main__":
 
         if idx % 10 == 0:
             total_rewards = exp_source.pop_total_rewards()
-            if total_rewards:
-                mean_reward = np.mean(total_rewards)
-                print("%d: Mean reward: %.2f, done: %d, epsilon: %.4f" % (
-                    idx, mean_reward, len(total_rewards), action_selector.epsilon
-                ))
-                if mean_reward > run.getfloat("defaults", "stop_mean_reward", fallback=2*abs(mean_reward)):
+            reward_sma += total_rewards
+            mean_reward = reward_sma.mean()
+            print("%d: Mean reward: %.2f, done: %d, epsilon: %.4f" % (
+                idx, mean_reward, len(total_rewards), action_selector.epsilon
+            ))
+
+            if run.has_option("stop", "mean_reward") and mean_reward is not None:
+                if mean_reward >= run.getfloat("stop", "mean_reward"):
                     print("We've reached mean reward bound, exit")
                     break
-            else:
-                print("%d: no reward info, epsilon: %.4f" % (idx, action_selector.epsilon))
     env.close()
     pass
