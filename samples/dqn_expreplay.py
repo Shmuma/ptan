@@ -115,8 +115,9 @@ if __name__ == "__main__":
             total_rewards = exp_source.pop_total_rewards()
             reward_sma += total_rewards
             mean_reward = reward_sma.mean()
-            print("%d: Mean reward: %.2f, done: %d, epsilon: %.4f" % (
-                idx, mean_reward, len(total_rewards), action_selector.epsilon
+            mean_reward_str = "%.2f" % mean_reward if mean_reward is not None else 'None'
+            print("%d: Mean reward: %s, done: %d, epsilon: %.4f" % (
+                idx, mean_reward_str, len(total_rewards), action_selector.epsilon
             ))
 
             if run.has_option("stop", "mean_reward") and mean_reward is not None:
