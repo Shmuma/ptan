@@ -29,10 +29,16 @@ class SMAQueue:
         return "SMAQueue(size=%d, len=%d)" % (self.size, len(self.queue))
 
     def min(self):
+        if not self.queue:
+            return None
         return np.min(self.queue)
 
     def mean(self):
+        if not self.queue:
+            return None
         return np.mean(self.queue)
 
     def max(self):
+        if not self.queue:
+            return None
         return np.max(self.queue)

@@ -19,10 +19,20 @@ class TestSMAQueue(TestCase):
         self.assertEqual(4, len(q))
 
     def test_min(self):
-        self.fail()
+        q = SMAQueue(4)
+        self.assertIsNone(q.min())
+        q += [1, 10, 0]
+        self.assertEqual(0, q.min())
 
     def test_mean(self):
-        self.fail()
+        q = SMAQueue(4)
+        self.assertIsNone(q.min())
+        q += [1, 10, 0]
+        self.assertAlmostEqual(3.6666666, q.mean(), places=5)
 
     def test_max(self):
-        self.fail()
+        q = SMAQueue(4)
+        self.assertIsNone(q.min())
+        q += [1, 10, 0]
+        self.assertEqual(10, q.max())
+

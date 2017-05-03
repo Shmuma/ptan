@@ -43,7 +43,7 @@ class ExperienceSource:
                 if len(history) > self.steps_count+1:
                     history.popleft()
                 # generate tail of history
-                while len(history) > 1:
+                while len(history) >= 1:
                     yield tuple(history)
                     history.popleft()
                 self.total_rewards.append(total_reward)

@@ -39,14 +39,10 @@ class TestExperienceSource(TestCase):
         for step, exp in enumerate(exp_source):
             self.assertIsInstance(exp, tuple)
             self.assertIsInstance(exp[0], experience.Experience)
-            if exp[0].done:
-                self.assertEqual(2, len(exp))
-                self.assertIsNotNone(exp[1].state)
-                self.assertIsNone(exp[1].reward)
-                self.assertIsNone(exp[1].action)
+
+            if len(exp) == 1:
+                self.assertTrue(exp[0].done)
                 break
-            elif exp[1].done:
-                self.assertEqual(2, len(exp))
 
 
 class TestExperienceReplayBuffer(TestCase):
