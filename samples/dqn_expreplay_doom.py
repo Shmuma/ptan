@@ -20,7 +20,6 @@ from ptan import experience
 
 GAMMA = 0.99
 
-SAVE_INTERVAL = 20
 
 class Net(nn.Module):
     def __init__(self, n_actions, input_shape=(1, 80, 80)):
@@ -166,12 +165,13 @@ if __name__ == "__main__":
                     print("We've reached mean reward bound, exit")
                     break
 
-        if idx % SAVE_INTERVAL == 0 and idx > 0:
-            if args.save:
-                path = os.path.join(args.save, "model-%05d.dat" % idx)
-                with open(path, 'wb') as fd:
-                    torch.save(model.state_dict(), fd)
-                print("Model %s saved" % path)
+        if idx > 0 and run.has_option("default", "save_epoches"):
+            if idx % run.getint("default", "save_epoches") == 0:
+                if args.save:
+                    path = os.path.join(args.save, "model-%05d.dat" % idx)
+                    with open(path, 'wb') as fd:
+                        torch.save(model.state_dict(), fd)
+                    print("Model %s saved" % path)
 
     env.close()
     pass
