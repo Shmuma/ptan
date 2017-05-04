@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import argparse
 import numpy as np
 
@@ -19,6 +20,7 @@ from ptan import experience
 
 GAMMA = 0.99
 
+SAVE_INTERVAL = 20
 
 class Net(nn.Module):
     def __init__(self, n_actions, input_shape=(1, 80, 80)):
@@ -59,7 +61,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--runfile", required=True, help="Name of the runfile to use")
     parser.add_argument("-m", "--monitor", help="Use monitor and save it's data into given dir")
+    parser.add_argument("-s", "--save", help="Directory to save model state")
     args = parser.parse_args()
+
+    if args.save is not None:
+        os.makedirs(args.save, exist_ok=True)
 
     run = runfile.RunFile(args.runfile)
 
@@ -157,5 +163,13 @@ if __name__ == "__main__":
                 if mean_reward >= run.getfloat("stop", "mean_reward"):
                     print("We've reached mean reward bound, exit")
                     break
+
+        if idx % SAVE_INTERVAL == 0 and idx > 0:
+            if args.save:
+                path = os.path.join(args.save, "model-%05d.dat" % idx)
+                with open(path, 'wb') as fd:
+                    torch.save(model.state_dict(), fd)
+                print("Model %s saved" % path)
+
     env.close()
     pass
