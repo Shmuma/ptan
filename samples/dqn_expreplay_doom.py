@@ -73,6 +73,8 @@ if __name__ == "__main__":
     make_env = lambda: wrappers.PreprocessImage(SkipWrapper(4)(ToDiscrete("minimal")(gym.make(run.get("defaults", "env")))),
                                                 width=80, height=80, grayscale=True)
     env = make_env()
+    if args.monitor:
+        env = gym.wrappers.Monitor(env, args.monitor)
 
     params = env_params.EnvParams.from_env(env)
     env_params.register(params)
