@@ -133,6 +133,7 @@ if __name__ == "__main__":
     reward_sma = utils.SMAQueue(run.getint("stop", "mean_games", fallback=100))
 
     for idx in range(10000):
+        run.check_and_reload()
         exp_replay.populate(run.getint("exp_buffer", "populate"))
 
         for batch in exp_replay.batches(run.getint("learning", "batch_size")):
