@@ -1,3 +1,5 @@
+import time
+from datetime import timedelta
 import numpy as np
 import collections
 
@@ -42,3 +44,70 @@ class SMAQueue:
         if not self.queue:
             return None
         return np.max(self.queue)
+
+
+class SpeedMonitor:
+    def __init__(self, batch_size, autostart=True):
+        self.batch_size = batch_size
+        self.start_ts = None
+        self.batches = None
+        if autostart:
+            self.reset()
+
+    def epoch(self):
+        if self.epoches is not None:
+            self.epoches += 1
+
+    def batch(self):
+        if self.batches is not None:
+            self.batches += 1
+
+    def reset(self):
+        self.start_ts = time.time()
+        self.batches = 0
+        self.epoches = 0
+
+    def seconds(self):
+        """
+        Seconds since last reset
+        :return: 
+        """
+        return time.time() - self.start_ts
+
+    def samples_per_sec(self):
+        """
+        Calculate samples per second since last reset() call 
+        :return: float count samples per second or None if not started 
+        """
+        if self.start_ts is None:
+            return None
+        secs = self.seconds()
+        if abs(secs) < 1e-5:
+            return 0.0
+        return (self.batches + 1) * self.batch_size / secs
+
+    def epoch_time(self):
+        """
+        Calculate average epoch time
+        :return: timedelta object 
+        """
+        if self.start_ts is None:
+            return None
+        s = self.seconds()
+        if self.epoches > 0:
+            s /= self.epoches + 1
+        return timedelta(seconds=s)
+
+    def batch_time(self):
+        """
+        Calculate average batch time
+        :return: timedelta object 
+        """
+        if self.start_ts is None:
+            return None
+        s = self.seconds()
+        if self.batches > 0:
+            s /= self.batches + 1
+        return timedelta(seconds=s)
+
+

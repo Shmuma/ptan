@@ -1,6 +1,7 @@
+import time
 from unittest import TestCase
 
-from ptan.common.utils import SMAQueue
+from ptan.common.utils import SMAQueue, SpeedMonitor
 
 
 class TestSMAQueue(TestCase):
@@ -36,3 +37,51 @@ class TestSMAQueue(TestCase):
         q += [1, 10, 0]
         self.assertEqual(10, q.max())
 
+
+class TestSpeedMonitor(TestCase):
+    def test_basic(self):
+        m = SpeedMonitor(1, autostart=True)
+        time.sleep(0.1)
+        self.assertGreaterEqual(m.seconds(), 0.1)
+        m = SpeedMonitor(1, autostart=False)
+        time.sleep(0.1)
+        m.reset()
+        time.sleep(0.2)
+        self.assertLess(m.seconds(), 0.3)
+
+    def test_epoch(self):
+        m = SpeedMonitor(1)
+        time.sleep(0.1)
+        dt = m.epoch_time()
+        self.assertEqual(m.epoches, 0)
+        self.assertGreaterEqual(dt.total_seconds(), 0.1)
+        m.epoch()
+        self.assertEqual(m.epoches, 1)
+        time.sleep(0.1)
+        dt = m.epoch_time()
+        self.assertGreaterEqual(dt.total_seconds(), 0.1)
+        self.assertLess(dt.total_seconds(), 0.2)
+
+    def test_batch(self):
+        m = SpeedMonitor(1)
+        time.sleep(0.1)
+        dt = m.batch_time()
+        self.assertEqual(m.batches, 0)
+        self.assertGreaterEqual(dt.total_seconds(), 0.1)
+        m.batch()
+        self.assertEqual(m.batches, 1)
+        time.sleep(0.1)
+        dt = m.batch_time()
+        self.assertGreaterEqual(dt.total_seconds(), 0.1)
+        self.assertLess(dt.total_seconds(), 0.2)
+
+    def test_samples_per_sec(self):
+        m = SpeedMonitor(10)
+        time.sleep(0.1)
+        ss = m.samples_per_sec()
+        self.assertLessEqual(ss, 100)
+        m.batch()
+        time.sleep(0.2)
+        ss = m.samples_per_sec()
+        self.assertGreaterEqual(ss, 66)
+        self.assertLessEqual(ss, 70)

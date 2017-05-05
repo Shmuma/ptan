@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import time
 import argparse
 import numpy as np
 
@@ -20,6 +21,7 @@ from ptan import experience
 
 GAMMA = 0.99
 
+REPORT_ITERS = 10
 
 class Net(nn.Module):
     def __init__(self, n_actions, input_shape=(1, 80, 80)):
@@ -131,6 +133,7 @@ if __name__ == "__main__":
         return torch.from_numpy(np.array(states, dtype=np.float32)), torch.stack(q_vals)
 
     reward_sma = utils.SMAQueue(run.getint("stop", "mean_games", fallback=100))
+    speed_mon = utils.SpeedMonitor(run.getint("learning", "batch_size"))
 
     for idx in range(10000):
         run.check_and_reload()
@@ -149,22 +152,26 @@ if __name__ == "__main__":
             l = loss_fn(model(states), q_vals)
             l.backward()
             optimizer.step()
+            speed_mon.batch()
 
         action_selector.epsilon *= run.getfloat("defaults", "epsilon_decay")
 
-        if idx % 10 == 0:
+        if idx % REPORT_ITERS == 0:
             total_rewards = exp_source.pop_total_rewards()
             reward_sma += total_rewards
             mean_reward = reward_sma.mean()
             mean_reward_str = "%.2f" % mean_reward if mean_reward is not None else 'None'
-            print("%d: Mean reward: %s, done: %d, epsilon: %.4f" % (
-                idx, mean_reward_str, len(total_rewards), action_selector.epsilon
+            print("%d: Mean reward: %s, done: %d, epsilon: %.4f, samples/s: %.3f, epoch time: %s" % (
+                idx, mean_reward_str, len(total_rewards), action_selector.epsilon,
+                speed_mon.samples_per_sec(),
+                speed_mon.epoch_time()
             ))
 
             if run.has_option("stop", "mean_reward") and mean_reward is not None:
                 if mean_reward >= run.getfloat("stop", "mean_reward"):
                     print("We've reached mean reward bound, exit")
                     break
+            speed_mon.reset()
 
         if idx > 0 and run.has_option("default", "save_epoches"):
             if idx % run.getint("default", "save_epoches") == 0:
@@ -173,6 +180,7 @@ if __name__ == "__main__":
                     with open(path, 'wb') as fd:
                         torch.save(model.state_dict(), fd)
                     print("Model %s saved" % path)
+        speed_mon.epoch()
 
     env.close()
     pass
