@@ -172,7 +172,8 @@ if __name__ == "__main__":
                     with open(path, 'wb') as fd:
                         torch.save(model.state_dict(), fd)
                     print("Model %s saved" % path)
-        target_net.sync()
+        if idx % run.getint("dqn", "copy_target_net_every_epoch") == 0:
+            target_net.sync()
         speed_mon.epoch()
 
     for env in env_pool:
