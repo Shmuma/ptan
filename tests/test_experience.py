@@ -12,7 +12,7 @@ def dummy_agent(states):
     return np.zeros(shape=(states.shape[0], 1), dtype=np.int32)
 
 
-class TestExperienceSource(TestCase):
+class TestExperienceSourceSingleEnv(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.env = gym.make("MountainCar-v0")
@@ -43,6 +43,18 @@ class TestExperienceSource(TestCase):
             if len(exp) == 1:
                 self.assertTrue(exp[0].done)
                 break
+
+
+class TestExperienceSourceManyEnv(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.envs = [gym.make("MountainCar-v0") for _ in range(10)]
+
+    def test_one_step(self):
+        exp_source = experience.ExperienceSource(self.envs, dummy_agent, steps_count=1)
+        for exp in exp_source:
+            self.assertEqual(2, len(exp))
+            break
 
 
 class TestExperienceReplayBuffer(TestCase):
