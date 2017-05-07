@@ -104,7 +104,7 @@ if __name__ == "__main__":
         actions = action_selector(q)
         return actions.data.cpu().numpy()
 
-    for i in range(run.getint("default", "env_pool_size", fallback=1)-1):
+    for i in range(run.getint("defaults", "env_pool_size", fallback=1)-1):
         env_pool.append(make_env())
     exp_source = experience.ExperienceSource(env=env_pool, agent=agent, steps_count=run.getint("defaults", "n_steps"))
     exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
