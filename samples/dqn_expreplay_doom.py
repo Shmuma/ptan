@@ -16,7 +16,7 @@ from ppaquette_gym_doom.wrappers.action_space import ToDiscrete
 
 from ptan.common import runfile, env_params, utils, wrappers
 from ptan.actions.epsilon_greedy import ActionSelectorEpsilonGreedy
-from ptan import experience, agent
+from ptan import experience, agent, nets
 
 GAMMA = 0.99
 
@@ -93,7 +93,8 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=run.getfloat("learning", "lr"))
 
     action_selector = ActionSelectorEpsilonGreedy(epsilon=run.getfloat("defaults", "epsilon"), params=params)
-    dqn_agent = agent.DQNAgent(dqn_model=model, action_selector=action_selector)
+    target_net = nets.TargetNet(model)
+    dqn_agent = agent.DQNAgent(dqn_model=target_net.target_model, action_selector=action_selector)
     exp_source = experience.ExperienceSource(env=env_pool, agent=dqn_agent, steps_count=run.getint("defaults", "n_steps"))
     exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
 
@@ -171,6 +172,7 @@ if __name__ == "__main__":
                     with open(path, 'wb') as fd:
                         torch.save(model.state_dict(), fd)
                     print("Model %s saved" % path)
+        target_net.sync()
         speed_mon.epoch()
 
     for env in env_pool:

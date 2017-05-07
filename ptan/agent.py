@@ -23,3 +23,4 @@ class DQNAgent:
         q = self.dqn_model(v)
         actions = self.action_selector(q)
         return actions.data.cpu().numpy()
+
