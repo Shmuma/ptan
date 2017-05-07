@@ -73,9 +73,10 @@ if __name__ == "__main__":
     cuda_enabled = run.getboolean("defaults", "cuda", fallback=False)
     make_env = lambda: wrappers.PreprocessImage(SkipWrapper(4)(ToDiscrete("minimal")(gym.make(run.get("defaults", "env")))),
                                                 width=80, height=80, grayscale=True)
-    env = make_env()
     if args.monitor:
-        env = gym.wrappers.Monitor(env, args.monitor)
+        make_env = lambda: gym.wrappers.Monitor(make_env(), args.monitor)
+    env = make_env()
+    env_pool = [env]
 
     params = env_params.EnvParams.from_env(env)
     env_params.register(params)
@@ -103,7 +104,9 @@ if __name__ == "__main__":
         actions = action_selector(q)
         return actions.data.cpu().numpy()
 
-    exp_source = experience.ExperienceSource(env=env, agent=agent, steps_count=run.getint("defaults", "n_steps"))
+    for i in range(run.getint("default", "env_pool_size", fallback=1)-1):
+        env_pool.append(make_env())
+    exp_source = experience.ExperienceSource(env=env_pool, agent=agent, steps_count=run.getint("defaults", "n_steps"))
     exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
 
     def batch_to_train(batch):
@@ -182,5 +185,6 @@ if __name__ == "__main__":
                     print("Model %s saved" % path)
         speed_mon.epoch()
 
-    env.close()
+    for env in env_pool:
+        env.close()
     pass
