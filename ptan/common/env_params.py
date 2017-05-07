@@ -12,6 +12,10 @@ class EnvParams:
     def __init__(self, n_actions, state_shape):
         self.n_actions = n_actions
         self.state_shape = state_shape
+        self.cuda_enabled = False
+
+    def load_runfile(self, run):
+        self.cuda_enabled = run.cuda_enabled
 
     @classmethod
     def from_env(cls, env):

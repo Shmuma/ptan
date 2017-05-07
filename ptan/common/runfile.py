@@ -18,3 +18,7 @@ class RunFile(configparser.ConfigParser):
         if self.mtime != mtime:
             self.clear()
             self.read(self.file_name)
+
+    @property
+    def cuda_enabled(self):
+        return self.getboolean("defaults", "cuda", fallback=False)
