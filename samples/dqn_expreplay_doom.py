@@ -71,10 +71,14 @@ if __name__ == "__main__":
     run = runfile.RunFile(args.runfile)
 
     cuda_enabled = run.getboolean("defaults", "cuda", fallback=False)
-    make_env = lambda: wrappers.PreprocessImage(SkipWrapper(4)(ToDiscrete("minimal")(gym.make(run.get("defaults", "env")))),
-                                                width=80, height=80, grayscale=True)
-    if args.monitor:
-        make_env = lambda: gym.wrappers.Monitor(make_env(), args.monitor)
+
+    def make_env():
+        e = wrappers.PreprocessImage(SkipWrapper(4)(ToDiscrete("minimal")(gym.make(run.get("defaults", "env")))),
+                                     width=80, height=80, grayscale=True)
+        if args.monitor:
+            e = gym.wrappers.Monitor(e, args.monitor)
+        return e
+
     env = make_env()
     env_pool = [env]
 
