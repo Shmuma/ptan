@@ -28,6 +28,7 @@ class Net(nn.Module):
         self.conv1 = nn.Conv2d(input_shape[0], 32, 5)
         self.conv2 = nn.Conv2d(32, 32, 3)
         self.conv3 = nn.Conv2d(32, 64, 2)
+#        self.conv4 = nn.Conv2d(64, 64, 2)
 
         n_size = self._get_conv_output(input_shape)
 
@@ -45,6 +46,7 @@ class Net(nn.Module):
         x = F.relu(F.max_pool2d(self.conv1(x), 3, 2))
         x = F.relu(F.max_pool2d(self.conv2(x), 3, 2))
         x = F.relu(F.max_pool2d(self.conv3(x), 3, 2))
+#        x = F.relu(F.max_pool2d(self.conv4(x), 2, 2))
         return x
 
     def forward(self, x):
@@ -91,7 +93,8 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=run.getfloat("learning", "lr"))
 
     action_selector = ActionSelectorEpsilonGreedy(epsilon=run.getfloat("defaults", "epsilon"), params=params)
-    dqn_agent = agent.DQNAgent(dqn_model=model, action_selector=action_selector)
+    target_net = agent.TargetNet(model)
+    dqn_agent = agent.DQNAgent(dqn_model=target_net.target_model, action_selector=action_selector)
     exp_source = experience.ExperienceSource(env=env_pool, agent=dqn_agent, steps_count=run.getint("defaults", "n_steps"))
     exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
 
@@ -169,6 +172,7 @@ if __name__ == "__main__":
                     with open(path, 'wb') as fd:
                         torch.save(model.state_dict(), fd)
                     print("Model %s saved" % path)
+        target_net.sync()
         speed_mon.epoch()
 
     for env in env_pool:

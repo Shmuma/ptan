@@ -3,6 +3,7 @@ Agent is something which converts states into actions
 """
 from .common import env_params
 
+import copy
 import numpy as np
 import torch
 from torch.autograd import Variable
@@ -24,3 +25,14 @@ class DQNAgent:
         actions = self.action_selector(q)
         return actions.data.cpu().numpy()
 
+
+class TargetNet:
+    """
+    Wrapper around model which provides copy of it instead of trained weights 
+    """
+    def __init__(self, model):
+        self.model = model
+        self.target_model = copy.deepcopy(model)
+
+    def sync(self):
+        self.target_model.load_state_dict(self.model.state_dict())
