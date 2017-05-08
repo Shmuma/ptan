@@ -22,18 +22,19 @@ GAMMA = 0.99
 
 REPORT_ITERS = 10
 
+
 class Net(nn.Module):
     def __init__(self, n_actions, input_shape=(1, 80, 80)):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(input_shape[0], 32, 5)
         self.conv2 = nn.Conv2d(32, 32, 3)
         self.conv3 = nn.Conv2d(32, 64, 2)
-#        self.conv4 = nn.Conv2d(64, 64, 2)
 
         n_size = self._get_conv_output(input_shape)
 
-        self.fc1 = nn.Linear(n_size, 50)
-        self.fc2 = nn.Linear(50, n_actions)
+        self.fc1 = nn.Linear(n_size, 256)
+        self.fc2 = nn.Linear(n_size, 256)
+        self.fc3 = nn.Linear(256, n_actions)
 
     def _get_conv_output(self, shape):
         input = Variable(torch.rand(1, *shape))
@@ -53,7 +54,8 @@ class Net(nn.Module):
         x = self._forward_conv(x)
         x = x.view(x.size(0), -1)
         x = F.relu(self.fc1(x))
-        x = self.fc2(x)
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
         return x
 
 
@@ -70,8 +72,9 @@ if __name__ == "__main__":
     run = runfile.RunFile(args.runfile)
 
     def make_env():
+        grayscale = run.getboolean("defaults", "grayscale")
         e = wrappers.PreprocessImage(SkipWrapper(4)(ToDiscrete("minimal")(gym.make(run.get("defaults", "env")))),
-                                     width=80, height=80, grayscale=True)
+                                     width=80, height=80, grayscale=grayscale)
         if args.monitor:
             e = gym.wrappers.Monitor(e, args.monitor)
         return e
