@@ -24,7 +24,7 @@ REPORT_ITERS = 10
 
 
 class Net(nn.Module):
-    def __init__(self, n_actions, input_shape=(1, 80, 80)):
+    def __init__(self, n_actions, input_shape):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(input_shape[0], 32, 5)
         self.conv2 = nn.Conv2d(32, 32, 3)
@@ -33,7 +33,7 @@ class Net(nn.Module):
         n_size = self._get_conv_output(input_shape)
 
         self.fc1 = nn.Linear(n_size, 256)
-        self.fc2 = nn.Linear(n_size, 256)
+        self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, n_actions)
 
     def _get_conv_output(self, shape):
@@ -71,10 +71,13 @@ if __name__ == "__main__":
 
     run = runfile.RunFile(args.runfile)
 
+    grayscale = run.getboolean("defaults", "grayscale", fallback=True)
+    im_width = run.getint("defaults", "image_width", fallback=80)
+    im_height = run.getint("defaults", "image_height", fallback=80)
+
     def make_env():
-        grayscale = run.getboolean("defaults", "grayscale")
         e = wrappers.PreprocessImage(SkipWrapper(4)(ToDiscrete("minimal")(gym.make(run.get("defaults", "env")))),
-                                     width=80, height=80, grayscale=grayscale)
+                                     width=im_width, height=im_height, grayscale=grayscale)
         if args.monitor:
             e = gym.wrappers.Monitor(e, args.monitor)
         return e
@@ -88,7 +91,7 @@ if __name__ == "__main__":
     params.load_runfile(run)
     env_params.register(params)
 
-    model = Net(params.n_actions)
+    model = Net(params.n_actions, input_shape=(1 if grayscale else 3, im_height, im_width))
     if params.cuda_enabled:
         model.cuda()
 
