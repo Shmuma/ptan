@@ -139,7 +139,8 @@ if __name__ == "__main__":
     speed_mon = utils.SpeedMonitor(run.getint("learning", "batch_size"))
 
     for idx in range(10000):
-#        run.check_and_reload()
+        if run.getboolean("defaults", "reload_config", fallback=False):
+            run.check_and_reload()
         exp_replay.populate(run.getint("exp_buffer", "populate"))
 
         for batch in exp_replay.batches(run.getint("learning", "batch_size")):
