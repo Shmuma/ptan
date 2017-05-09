@@ -137,8 +137,8 @@ if __name__ == "__main__":
                 # use target dqn and double -- chose final action from our model, but get value from target net
                 if use_target_dqn and use_double_dqn:
                     qL = model(vL)
-                    action = qL[0].data.argmax()
-                    total_reward = target_model(vL).data[action]
+                    action = np.argmax(qL[0].data)
+                    total_reward = target_model(vL)[0].data[action]
                 # only target is in use: use best value from it
                 elif use_target_dqn:
                     q = target_model(vL)
