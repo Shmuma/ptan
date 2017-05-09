@@ -104,7 +104,10 @@ if __name__ == "__main__":
     exp_source = experience.ExperienceSource(env=env_pool, agent=dqn_agent, steps_count=run.getint("defaults", "n_steps"))
     exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
 
-    if run.getboolean("dqn", "target_dqn", fallback=False):
+    use_target_dqn = run.getboolean("dqn", "target_dqn", fallback=False)
+    use_double_dqn = run.getboolean("dqn", "double_dqn", fallback=False)
+
+    if use_target_dqn:
         target_model = target_net.target_model
     else:
         target_model = model
@@ -120,19 +123,35 @@ if __name__ == "__main__":
         for exps in batch:
             # calculate q_values for first and last state in experience sequence
             # first is needed for reference, last is used to approximate rest value
-            v = Variable(torch.from_numpy(np.array([exps[0].state, exps[-1].state], dtype=np.float32)))
+            v0 = Variable(torch.from_numpy(np.array([exps[0].state], dtype=np.float32)))
+            vL = Variable(torch.from_numpy(np.array([exps[-1].state], dtype=np.float32)))
             if params.cuda_enabled:
-                v = v.cuda()
-            q = target_model(v)
-            # accumulate total reward for the chain
-            total_reward = 0.0 if exps[-1].done else q[1].data.max()
+                v0 = v0.cuda()
+                vL = vL.cuda()
+            q0 = model(v0)[0].data
+
+            # game is done, no final reward
+            if exps[-1].done:
+                total_reward = 0.0
+            else:
+                # use target dqn and double -- chose final action from our model, but get value from target net
+                if use_target_dqn and use_double_dqn:
+                    qL = model(vL)
+                    action = qL[0].data.argmax()
+                    total_reward = target_model(vL).data[action]
+                # only target is in use: use best value from it
+                elif use_target_dqn:
+                    q = target_model(vL)
+                    total_reward = q[0].data.max()
+                else:
+                    q = model(vL)
+                    total_reward = q[0].data.max()
             for exp in reversed(exps[:-1]):
                 total_reward = exp.reward + GAMMA * total_reward
             train_state = exps[0].state
-            train_q = q[0].data
-            train_q[exps[0].action] = total_reward
+            q0[exps[0].action] = total_reward
             states.append(train_state)
-            q_vals.append(train_q)
+            q_vals.append(q0)
         return torch.from_numpy(np.array(states, dtype=np.float32)), torch.stack(q_vals)
 
     reward_sma = utils.SMAQueue(run.getint("stop", "mean_games", fallback=100))
