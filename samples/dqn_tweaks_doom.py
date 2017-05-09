@@ -138,55 +138,58 @@ if __name__ == "__main__":
     reward_sma = utils.SMAQueue(run.getint("stop", "mean_games", fallback=100))
     speed_mon = utils.SpeedMonitor(run.getint("learning", "batch_size"))
 
-    for idx in range(10000):
-        if run.getboolean("defaults", "reload_config", fallback=False):
-            run.check_and_reload()
-        exp_replay.populate(run.getint("exp_buffer", "populate"))
+    try:
+        for idx in range(10000):
+            if run.getboolean("defaults", "reload_config", fallback=False):
+                run.check_and_reload()
+            exp_replay.populate(run.getint("exp_buffer", "populate"))
 
-        for batch in exp_replay.batches(run.getint("learning", "batch_size")):
-            optimizer.zero_grad()
+            for batch in exp_replay.batches(run.getint("learning", "batch_size")):
+                optimizer.zero_grad()
 
-            # populate buffer
-            states, q_vals = batch_to_train(batch)
-            # ready to train
-            states, q_vals = Variable(states), Variable(q_vals)
-            if params.cuda_enabled:
-                states = states.cuda()
-                q_vals = q_vals.cuda()
-            l = loss_fn(model(states), q_vals)
-            l.backward()
-            optimizer.step()
-            speed_mon.batch()
+                # populate buffer
+                states, q_vals = batch_to_train(batch)
+                # ready to train
+                states, q_vals = Variable(states), Variable(q_vals)
+                if params.cuda_enabled:
+                    states = states.cuda()
+                    q_vals = q_vals.cuda()
+                l = loss_fn(model(states), q_vals)
+                l.backward()
+                optimizer.step()
+                speed_mon.batch()
 
-        action_selector.epsilon *= run.getfloat("defaults", "epsilon_decay")
+            action_selector.epsilon *= run.getfloat("defaults", "epsilon_decay")
 
-        if idx % REPORT_ITERS == 0:
-            total_rewards = exp_source.pop_total_rewards()
-            reward_sma += total_rewards
-            mean_reward = reward_sma.mean()
-            mean_reward_str = "%.2f" % mean_reward if mean_reward is not None else 'None'
-            print("%d: Mean reward: %s, done: %d, epsilon: %.4f, samples/s: %.3f, epoch time: %s" % (
-                idx, mean_reward_str, len(total_rewards), action_selector.epsilon,
-                speed_mon.samples_per_sec(),
-                speed_mon.epoch_time()
-            ))
+            if idx % REPORT_ITERS == 0:
+                total_rewards = exp_source.pop_total_rewards()
+                reward_sma += total_rewards
+                mean_reward = reward_sma.mean()
+                mean_reward_str = "%.2f" % mean_reward if mean_reward is not None else 'None'
+                print("%d: Mean reward: %s, done: %d, epsilon: %.4f, samples/s: %.3f, epoch time: %s" % (
+                    idx, mean_reward_str, len(total_rewards), action_selector.epsilon,
+                    speed_mon.samples_per_sec(),
+                    speed_mon.epoch_time()
+                ))
 
-            if run.has_option("stop", "mean_reward") and mean_reward is not None:
-                if mean_reward >= run.getfloat("stop", "mean_reward"):
-                    print("We've reached mean reward bound, exit")
-                    break
-            speed_mon.reset()
+                if run.has_option("stop", "mean_reward") and mean_reward is not None:
+                    if mean_reward >= run.getfloat("stop", "mean_reward"):
+                        print("We've reached mean reward bound, exit")
+                        break
+                speed_mon.reset()
 
-        if idx > 0 and run.has_option("default", "save_epoches"):
-            if idx % run.getint("default", "save_epoches") == 0:
-                if args.save:
-                    path = os.path.join(args.save, "model-%05d.dat" % idx)
-                    with open(path, 'wb') as fd:
-                        torch.save(model.state_dict(), fd)
-                    print("Model %s saved" % path)
-        if idx % run.getint("dqn", "copy_target_net_every_epoch") == 0:
-            target_net.sync()
-        speed_mon.epoch()
+            if idx > 0 and run.has_option("default", "save_epoches"):
+                if idx % run.getint("default", "save_epoches") == 0:
+                    if args.save:
+                        path = os.path.join(args.save, "model-%05d.dat" % idx)
+                        with open(path, 'wb') as fd:
+                            torch.save(model.state_dict(), fd)
+                        print("Model %s saved" % path)
+            if idx % run.getint("dqn", "copy_target_net_every_epoch") == 0:
+                target_net.sync()
+            speed_mon.epoch()
+    except KeyboardInterrupt:
+        print("Interrupt received, exit")
 
     for env in env_pool:
         env.close()
