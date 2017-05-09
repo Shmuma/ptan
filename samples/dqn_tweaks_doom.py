@@ -100,9 +100,14 @@ if __name__ == "__main__":
 
     action_selector = ActionSelectorEpsilonGreedy(epsilon=run.getfloat("defaults", "epsilon"), params=params)
     target_net = agent.TargetNet(model)
-    dqn_agent = agent.DQNAgent(dqn_model=target_net.target_model, action_selector=action_selector)
+    dqn_agent = agent.DQNAgent(dqn_model=model, action_selector=action_selector)
     exp_source = experience.ExperienceSource(env=env_pool, agent=dqn_agent, steps_count=run.getint("defaults", "n_steps"))
     exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
+
+    if run.getboolean("dqn", "target_dqn", fallback=False):
+        target_model = target_net.target_model
+    else:
+        target_model = model
 
     def batch_to_train(batch):
         """
@@ -118,7 +123,7 @@ if __name__ == "__main__":
             v = Variable(torch.from_numpy(np.array([exps[0].state, exps[-1].state], dtype=np.float32)))
             if params.cuda_enabled:
                 v = v.cuda()
-            q = model(v)
+            q = target_model(v)
             # accumulate total reward for the chain
             total_reward = 0.0 if exps[-1].done else q[1].data.max()
             for exp in reversed(exps[:-1]):
