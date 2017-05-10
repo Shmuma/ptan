@@ -118,41 +118,45 @@ if __name__ == "__main__":
         :param batch: list of tuples with Experience instances 
         :return: 
         """
-        states = []
-        q_vals = []
-        for exps in batch:
-            # calculate q_values for first and last state in experience sequence
-            # first is needed for reference, last is used to approximate rest value
-            v0 = Variable(torch.from_numpy(np.array([exps[0].state], dtype=np.float32)))
-            vL = Variable(torch.from_numpy(np.array([exps[-1].state], dtype=np.float32)))
-            if params.cuda_enabled:
-                v0 = v0.cuda()
-                vL = vL.cuda()
-            q0 = model(v0)[0].data
+        v0_data = []
+        vL_data = []
 
+        for exps in batch:
+            v0_data.append(exps[0].state)
+            vL_data.append(exps[-1].state)
+
+        states_t = torch.from_numpy(np.array(v0_data, dtype=np.float32))
+        v0 = Variable(states_t)
+        vL = Variable(torch.from_numpy(np.array(vL_data, dtype=np.float32)))
+        if params.cuda_enabled:
+            v0 = v0.cuda()
+            vL = vL.cuda()
+
+        q0 = model(v0).data
+
+        if use_target_dqn and use_double_dqn:
+            qL = model(vL)
+            actions = qL.data.cpu().max(1)[1].squeeze().numpy()
+            qL = target_model(vL).data.cpu().numpy()
+            total_rewards = qL[range(qL.shape[0]), actions]
+        # only target is in use: use best value from it
+        elif use_target_dqn:
+            q = target_model(vL)
+            total_rewards = q.data.max(1)
+        else:
+            q = model(vL)
+            total_rewards = q.data.max(1)
+
+        for idx, exps in enumerate(batch):
             # game is done, no final reward
             if exps[-1].done:
                 total_reward = 0.0
             else:
-                # use target dqn and double -- chose final action from our model, but get value from target net
-                if use_target_dqn and use_double_dqn:
-                    qL = model(vL)
-                    action = np.argmax(qL[0].data)
-                    total_reward = target_model(vL)[0].data[action]
-                # only target is in use: use best value from it
-                elif use_target_dqn:
-                    q = target_model(vL)
-                    total_reward = q[0].data.max()
-                else:
-                    q = model(vL)
-                    total_reward = q[0].data.max()
+                total_reward = total_rewards[idx]
             for exp in reversed(exps[:-1]):
                 total_reward = exp.reward + GAMMA * total_reward
-            train_state = exps[0].state
-            q0[exps[0].action] = total_reward
-            states.append(train_state)
-            q_vals.append(q0)
-        return torch.from_numpy(np.array(states, dtype=np.float32)), torch.stack(q_vals)
+            q0[idx][exps[0].action] = total_reward
+        return states_t, q0
 
     reward_sma = utils.SMAQueue(run.getint("stop", "mean_games", fallback=100))
     speed_mon = utils.SpeedMonitor(run.getint("learning", "batch_size"))
