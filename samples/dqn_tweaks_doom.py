@@ -207,9 +207,6 @@ if __name__ == "__main__":
             if idx % run.getint("dqn", "copy_target_net_every_epoch") == 0:
                 target_net.sync()
             speed_mon.epoch()
-    except KeyboardInterrupt:
-        print("Interrupt received, exit")
-
-    for env in env_pool:
-        env.close()
-    pass
+    finally:
+        for env in env_pool:
+            env.close()
