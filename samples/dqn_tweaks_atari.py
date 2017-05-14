@@ -140,11 +140,10 @@ if __name__ == "__main__":
         # only target is in use: use best value from it
         elif use_target_dqn:
             q = target_model(vL)
-            total_rewards = q.data.max(1)
+            total_rewards = q.data.max(1)[0].squeeze().cpu().numpy()
         else:
             q = model(vL)
-            total_rewards = q.data.max(1)
-
+            total_rewards = q.data.max(1)[0].squeeze().cpu().numpy()
         for idx, exps in enumerate(batch):
             # game is done, no final reward
             if exps[-1].done:
