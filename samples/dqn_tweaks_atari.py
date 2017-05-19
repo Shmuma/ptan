@@ -180,6 +180,9 @@ if __name__ == "__main__":
                 speed_mon.batch()
 
             action_selector.epsilon *= run.getfloat("defaults", "epsilon_decay")
+            if run.has_option("defaults", "epsilon_minimum"):
+                action_selector.epsilon = max(run.getfloat("defaults", "epsilon_minimum"),
+                                              action_selector.epsilon)
 
             if idx % REPORT_ITERS == 0:
                 total_rewards = exp_source.pop_total_rewards()
