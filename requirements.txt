@@ -43,3 +43,4 @@ torchvision
 tornado==4.5.1
 traitlets==4.3.2
 wcwidth==0.1.7
+tensorboard-logger==0.0.3

@@ -17,6 +17,8 @@ from ptan.common import runfile, env_params, utils, wrappers
 from ptan.actions.epsilon_greedy import ActionSelectorEpsilonGreedy
 from ptan import experience, agent
 
+import tensorboard_logger as tb
+
 GAMMA = 0.99
 
 REPORT_ITERS = 10
@@ -62,10 +64,15 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--runfile", required=True, help="Name of the runfile to use")
     parser.add_argument("-m", "--monitor", help="Use monitor and save it's data into given dir")
     parser.add_argument("-s", "--save", help="Directory to save model state")
+    parser.add_argument("-n", "--name", required=True, help="Name of the run to log")
     args = parser.parse_args()
 
     if args.save is not None:
         os.makedirs(args.save, exist_ok=True)
+
+    logdir = os.path.join("logs", args.name)
+    os.makedirs(logdir, exist_ok=True)
+    tb.configure(logdir)
 
     run = runfile.RunFile(args.runfile)
     grayscale = run.getboolean("defaults", "grayscale", fallback=True)
@@ -173,8 +180,7 @@ if __name__ == "__main__":
                 if params.cuda_enabled:
                     states = states.cuda()
                     q_vals = q_vals.cuda()
-                l = loss_fn(model(states), q_vals)
-                l.backward()
+                l = loss_fn(model(states), q_vals)                l.backward()
                 optimizer.step()
                 speed_mon.batch()
 
@@ -182,11 +188,13 @@ if __name__ == "__main__":
             if run.has_option("defaults", "epsilon_minimum"):
                 action_selector.epsilon = max(run.getfloat("defaults", "epsilon_minimum"),
                                               action_selector.epsilon)
+            tb.log_value("epsilon", action_selector.epsilon, step=idx)
 
             if idx % REPORT_ITERS == 0:
                 total_rewards = exp_source.pop_total_rewards()
                 reward_sma += total_rewards
                 mean_reward = reward_sma.mean()
+                tb.log_value("reward_mean", mean_reward, step=idx)
                 mean_reward_str = "%.2f" % mean_reward if mean_reward is not None else 'None'
                 print("%d: Mean reward: %s, done: %d, epsilon: %.4f, samples/s: %.3f, epoch time: %s" % (
                     idx, mean_reward_str, len(total_rewards), action_selector.epsilon,
