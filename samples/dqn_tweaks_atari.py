@@ -43,10 +43,9 @@ class Net(nn.Module):
         return n_size
 
     def _forward_conv(self, x):
-        x = F.relu(F.max_pool2d(self.conv1(x), 3, 2))
-        x = F.relu(F.max_pool2d(self.conv2(x), 3, 2))
-        x = F.relu(F.max_pool2d(self.conv3(x), 3, 2))
-#        x = F.relu(F.max_pool2d(self.conv4(x), 2, 2))
+        x = F.relu(F.max_pool2d(self.conv1(x), 3))
+        x = F.relu(F.max_pool2d(self.conv2(x), 3))
+        x = F.relu(F.max_pool2d(self.conv3(x), 3))
         return x
 
     def forward(self, x):
