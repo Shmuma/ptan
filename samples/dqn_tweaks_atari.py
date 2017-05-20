@@ -191,6 +191,17 @@ if __name__ == "__main__":
             if run.has_option("defaults", "epsilon_minimum"):
                 action_selector.epsilon = max(run.getfloat("defaults", "epsilon_minimum"),
                                               action_selector.epsilon)
+
+            # lr decay
+            if run.has_option("learning", "lr_decay"):
+                lr = None
+                for param_group in optimizer.param_groups():
+                    param_group['lr'] *= run.getfloat("learning", "lr_decay")
+                    if run.has_option("learning", "lr_minimum"):
+                        param_group['lr'] = max(param_group['lr'], run.getfloat("learning", "lr_minimum"))
+                    lr = param_group['lr']
+                tb.log_value("lr", lr, step=idx)
+
             tb.log_value("loss", np.mean(losses), step=idx)
             tb.log_value("epsilon", action_selector.epsilon, step=idx)
 
