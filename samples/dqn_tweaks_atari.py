@@ -99,7 +99,7 @@ if __name__ == "__main__":
     if params.cuda_enabled:
         model.cuda()
 
-    loss_fn = nn.MSELoss(size_average=False)
+    loss_fn = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=run.getfloat("learning", "lr"))
 
     action_selector = ActionSelectorEpsilonGreedy(epsilon=run.getfloat("defaults", "epsilon"), params=params)
@@ -170,6 +170,7 @@ if __name__ == "__main__":
                 run.check_and_reload()
             exp_replay.populate(run.getint("exp_buffer", "populate"))
 
+            losses = []
             for batch in exp_replay.batches(run.getint("learning", "batch_size")):
                 optimizer.zero_grad()
 
@@ -180,7 +181,9 @@ if __name__ == "__main__":
                 if params.cuda_enabled:
                     states = states.cuda()
                     q_vals = q_vals.cuda()
-                l = loss_fn(model(states), q_vals)                l.backward()
+                l = loss_fn(model(states), q_vals)
+                losses.append(l.data.cpu().numpy())
+                l.backward()
                 optimizer.step()
                 speed_mon.batch()
 
@@ -188,6 +191,7 @@ if __name__ == "__main__":
             if run.has_option("defaults", "epsilon_minimum"):
                 action_selector.epsilon = max(run.getfloat("defaults", "epsilon_minimum"),
                                               action_selector.epsilon)
+            tb.log_value("loss", np.mean(losses), step=idx)
             tb.log_value("epsilon", action_selector.epsilon, step=idx)
 
             if idx % REPORT_ITERS == 0:
