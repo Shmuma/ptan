@@ -116,6 +116,11 @@ if __name__ == "__main__":
     else:
         target_model = model
 
+    # running sums of batch values
+    batches_count = 0
+    batches_sum_q0 = 0.0
+    batches_sum_total_reward = 0.0
+
     def batch_to_train(batch):
         """
         Convert batch into training data using bellman's equation
@@ -138,6 +143,11 @@ if __name__ == "__main__":
 
         q0 = model(v0).data
 
+        global batches_count, batches_sum_q0, batches_sum_total_reward
+        batches_count += 1
+        batches_sum_q0 += q0.mean()
+        sum_total_reward = 0.0
+
         if use_target_dqn and use_double_dqn:
             qL = model(vL)
             actions = qL.data.cpu().max(1)[1].squeeze().numpy()
@@ -159,6 +169,8 @@ if __name__ == "__main__":
             for exp in reversed(exps[:-1]):
                 total_reward = exp.reward + GAMMA * total_reward
             q0[idx][exps[0].action] = total_reward
+            sum_total_reward += total_reward
+        batches_sum_total_reward += sum_total_reward / len(batch)
         return states_t, q0
 
     reward_sma = utils.SMAQueue(run.getint("stop", "mean_games", fallback=100))
@@ -201,6 +213,11 @@ if __name__ == "__main__":
                         param_group['lr'] = max(param_group['lr'], run.getfloat("learning", "lr_minimum"))
                     lr = param_group['lr']
                 tb.log_value("lr", lr, step=idx)
+
+            tb.log_value("qvals_mean", batches_sum_q0 / batches_count, step=idx)
+            tb.log_value("qvals_target", batches_sum_total_reward / batches_count, step=idx)
+            batches_count = 0
+            batches_sum_total_reward = batches_sum_q0 = 0.0
 
             tb.log_value("loss", np.mean(losses), step=idx)
             tb.log_value("epsilon", action_selector.epsilon, step=idx)
