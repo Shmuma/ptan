@@ -78,24 +78,24 @@ if __name__ == "__main__":
     grayscale = run.getboolean("defaults", "grayscale", fallback=True)
     im_width = run.getint("defaults", "image_width", fallback=80)
     im_height = run.getint("defaults", "image_height", fallback=80)
+    frames_count = run.getint("defaults", "frames_count", fallback=1)
 
     def make_env():
-        env_name = gym.make(run.get("defaults", "env"))
-        e = wrappers.PreprocessImage(env_name, height=im_height, width=im_width, grayscale=grayscale)
+        e = gym.make(run.get("defaults", "env"))
+        e = wrappers.PreprocessImage(e, height=im_height, width=im_width, grayscale=grayscale)
+        if frames_count > 1:
+            e = wrappers.FrameBuffer(e, n_frames=frames_count)
         if args.monitor:
             e = gym.wrappers.Monitor(e, args.monitor)
         return e
 
-    env = make_env()
-    env_pool = [env]
-    for i in range(run.getint("defaults", "env_pool_size", fallback=1)-1):
-        env_pool.append(make_env())
+    env_pool = [make_env() for _ in range(run.getint("defaults", "env_pool_size", fallback=1))]
 
-    params = env_params.EnvParams.from_env(env)
+    params = env_params.EnvParams.from_env(env_pool[0])
     params.load_runfile(run)
     env_params.register(params)
 
-    model = Net(params.n_actions, input_shape=(1 if grayscale else 3, im_height, im_width))
+    model = Net(params.n_actions, input_shape=(frames_count if grayscale else 3*frames_count, im_height, im_width))
     if params.cuda_enabled:
         model.cuda()
 

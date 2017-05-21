@@ -29,26 +29,22 @@ class PreprocessImage(ObservationWrapper):
         return img
 
 
-class FrameBuffer(Wrapper):
+class FrameBuffer(ObservationWrapper):
     def __init__(self, env, n_frames=4):
         """A gym wrapper that returns last n_frames observations as a single observation.
         Useful for games like Atari and Doom with screen as input."""
         super(FrameBuffer, self).__init__(env)
-        self.observation_space = Box(0.0, 1.0, [n_frames,]+list(env.observation_space.shape))
-        self.framebuffer = np.zeros([n_frames,]+list(env.observation_space.shape))
+        shape = (n_frames,) + env.observation_space.shape[1:]
+        self.observation_space = Box(0.0, 1.0, shape)
+        self.framebuffer = np.zeros(shape=(n_frames,) + env.observation_space.shape)
 
-    def reset(self):
-        """resets breakout, returns initial frames"""
+    def _reset(self):
         self.framebuffer = np.zeros_like(self.framebuffer)
-        self.update_buffer(self.env.reset())
-        return self.framebuffer
+        return super(FrameBuffer, self)._reset()
 
-    def step(self, action):
-        """plays breakout for 1 step, returns 4-frame buffer"""
-        new_obs, r, done, info = self.env.step(action)
-        self.update_buffer(new_obs)
-        return self.framebuffer, r, done, info
+    def _observation(self, observation):
+        self.framebuffer = np.concatenate((observation[None], self.framebuffer[:-1]))
 
-    def update_buffer(self, obs):
-        """push new observation to the buffer, remove the earliest one"""
-        self.framebuffer = np.vstack([obs[None], self.framebuffer[:-1]])
+        s = self.framebuffer.shape
+        return np.reshape(self.framebuffer, newshape=(s[0]*s[1], s[2], s[3]))
+
