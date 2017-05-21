@@ -228,6 +228,7 @@ if __name__ == "__main__":
                     speed_mon.samples_per_sec(),
                     speed_mon.epoch_time()
                 ))
+                tb.log_value("speed", speed_mon.samples_per_sec(), step=idx)
 
                 if run.has_option("stop", "mean_reward") and mean_reward is not None:
                     if mean_reward >= run.getfloat("stop", "mean_reward"):

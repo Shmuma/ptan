@@ -36,15 +36,13 @@ class FrameBuffer(ObservationWrapper):
         super(FrameBuffer, self).__init__(env)
         shape = (n_frames,) + env.observation_space.shape[1:]
         self.observation_space = Box(0.0, 1.0, shape)
-        self.framebuffer = np.zeros(shape=(n_frames,) + env.observation_space.shape)
+        self.framebuffer = [np.zeros(shape=env.observation_space.shape)]*n_frames
 
     def _reset(self):
-        self.framebuffer = np.zeros_like(self.framebuffer)
+        self.framebuffer = [np.zeros_like(self.framebuffer[0])] * len(self.framebuffer)
         return super(FrameBuffer, self)._reset()
 
     def _observation(self, observation):
-        self.framebuffer = np.concatenate((observation[None], self.framebuffer[:-1]))
-
-        s = self.framebuffer.shape
-        return np.reshape(self.framebuffer, newshape=(s[0]*s[1], s[2], s[3]))
+        self.framebuffer = [observation] + self.framebuffer[:-1]
+        return np.concatenate(self.framebuffer, axis=0)
 
