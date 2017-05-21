@@ -195,7 +195,7 @@ if __name__ == "__main__":
             # lr decay
             if run.has_option("learning", "lr_decay"):
                 lr = None
-                for param_group in optimizer.param_groups():
+                for param_group in optimizer.param_groups:
                     param_group['lr'] *= run.getfloat("learning", "lr_decay")
                     if run.has_option("learning", "lr_minimum"):
                         param_group['lr'] = max(param_group['lr'], run.getfloat("learning", "lr_minimum"))
