@@ -119,7 +119,6 @@ if __name__ == "__main__":
     # running sums of batch values
     batches_count = 0
     batches_sum_q0 = 0.0
-    batches_sum_total_reward = 0.0
 
     def batch_to_train(batch):
         """
@@ -143,10 +142,9 @@ if __name__ == "__main__":
 
         q0 = model(v0).data
 
-        global batches_count, batches_sum_q0, batches_sum_total_reward
+        global batches_count, batches_sum_q0
         batches_count += 1
         batches_sum_q0 += q0.mean()
-        sum_total_reward = 0.0
 
         if use_target_dqn and use_double_dqn:
             qL = model(vL)
@@ -169,8 +167,6 @@ if __name__ == "__main__":
             for exp in reversed(exps[:-1]):
                 total_reward = exp.reward + GAMMA * total_reward
             q0[idx][exps[0].action] = total_reward
-            sum_total_reward += total_reward
-        batches_sum_total_reward += sum_total_reward / len(batch)
         return states_t, q0
 
     reward_sma = utils.SMAQueue(run.getint("stop", "mean_games", fallback=100))
@@ -215,7 +211,6 @@ if __name__ == "__main__":
                 tb.log_value("lr", lr, step=idx)
 
             tb.log_value("qvals_mean", batches_sum_q0 / batches_count, step=idx)
-            tb.log_value("qvals_target", batches_sum_total_reward / batches_count, step=idx)
             batches_count = 0
             batches_sum_total_reward = batches_sum_q0 = 0.0
 
