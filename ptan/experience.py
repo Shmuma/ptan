@@ -1,3 +1,6 @@
+import torch
+from torch.autograd import Variable
+
 import numpy as np
 
 from collections import namedtuple, deque, OrderedDict
@@ -116,3 +119,87 @@ class ExperienceReplayBuffer:
         if self.buffer_size is not None:
             while len(self.buffer) > self.buffer_size:
                 self.buffer.popleft()
+
+
+class BatchPreprocessor:
+    """
+    Abstract preprocessor class descendants to which converts experience 
+    batch to form suitable to learning.
+    """
+    def preprocess(self, batch):
+        raise NotImplementedError
+
+
+class QLearningPreprocessor(BatchPreprocessor):
+    """
+    Supports SimpleDQN, TargetDQN, DoubleDQN and can additionally feed TD-error back to 
+    experience replay buffer.
+    
+    To use different modes, use appropriate class method
+    """
+    def __init__(self, model, target_model, use_double_dqn=False, batch_td_error_hook=None, gamma=0.99):
+        self.model = model
+        self.target_model = target_model
+        self.use_double_dqn = use_double_dqn
+        self.batch_dt_error_hook = batch_td_error_hook
+        self.gamma = gamma
+
+    @staticmethod
+    def simple_dqn(model, **kwargs):
+        return QLearningPreprocessor(model=model, target_model=None, use_double_dqn=False, **kwargs)
+
+    @staticmethod
+    def target_dqn(model, target_model, **kwards):
+        return QLearningPreprocessor(model, target_model, use_double_dqn=False, **kwards)
+
+    @staticmethod
+    def double_dqn(model, target_model, **kwargs):
+        return QLearningPreprocessor(model, target_model, use_double_dqn=True, **kwargs)
+
+    def _calc_Q(self, states):
+        # calculate Q values from basic model
+        states_t = torch.from_numpy(np.array(states, dtype=np.float32))
+        states_v = Variable(states_t).cuda()
+        return self.model(states_v).data
+
+    def _calc_target_rewards(self, states):
+        """
+        Calculate rewards from final states according to variants from our construction:
+        1. simple DQN: max(Q(states, model))
+        2. target DQN: max(Q(states, target_model))
+        3. double DQN: Q(states, target_model)[argmax(Q(states, model)]
+        :param states: 
+        :return: 
+        """
+        states_t = torch.from_numpy(np.array(states, dtype=np.float32))
+        states_v = Variable(states_t).cuda()
+
+        # simple DQN case
+        if self.target_model is None:
+            q = self.model(states_v)
+            return q.data.max(1)[0].squeeze().cpu().numpy()
+
+        # have target net, but no DDQN
+        if not self.use_double_dqn:
+            pass
+
+    def preprocess(self, batch):
+        # first and last states for every entry
+        state_0 = np.array([exp[0].state for exp in batch], dtype=np.float32)
+        state_L = np.array([exp[-1].state for exp in batch], dtype=np.float32)
+
+        q0 = self._calc_Q(state_0)
+        rewards = self._calc_target_rewards(state_L)
+
+        for idx, (total_reward, exps) in enumerate(zip(rewards, batch)):
+            # game is done, no final resward
+            if exps[-1].done:
+                total_reward = 0.0
+            for exp in reversed(exps[:-1]):
+                total_reward *= self.gamma
+                total_reward += exp.reward
+            # update total reward
+            # TODO: here we should calculate TD-error
+            q0[idx][exps[0].action] = total_reward
+
+        return torch.from_numpy(state_0), q0
