@@ -172,6 +172,13 @@ class QLearningPreprocessor(BatchPreprocessor):
             res_both = self.model(states_v).data.cpu().numpy()
             return res_both[:len(states_first)], res_both[len(states_first):]
 
+        # in this case we have target_model set and use_double_dqn==False
+        # so, we should calculate first_q and last_q using different models
+        states_first_v = Variable(torch.from_numpy(states_first)).cuda()
+        states_last_v = Variable(torch.from_numpy(states_last)).cude()
+        q_first = self.model(states_first_v).data
+        q_last = self.target_model(states_last_v).data
+        return q_first.cpu().numpy(), q_last.cpu().numpy()
 
     def _calc_target_rewards(self, states_last, q_last):
         """
@@ -183,20 +190,16 @@ class QLearningPreprocessor(BatchPreprocessor):
         :param q_last: numpy array of last q values 
         :return: vector of target rewards 
         """
-        if self.target_model is None:
+        # in this case we handle both simple DQN and target DQN
+        if self.target_model is None or not self.use_double_dqn:
             return q_last.max(axis=1)
-        #
-        # states_t = torch.from_numpy(np.array(states, dtype=np.float32))
-        # states_v = Variable(states_t).cuda()
-        #
-        # # simple DQN case
-        # if self.target_model is None:
-        #     q = self.model(states_v)
-        #     return q.data.max(1)[0].squeeze().cpu().numpy()
-        #
-        # # have target net, but no DDQN
-        # if not self.use_double_dqn:
-        #     pass
+
+        # here we have target_model set and use_double_dqn==True
+        actions = q_last.argmax(axis=1)
+        # calculate Q values using target net
+        states_last_v = Variable(torch.from_numpy(states_last)).cuda()
+        q_last_target = self.target_model(states_last_v).data.cpu().numpy()
+        return q_last_target[range(q_last_target.shape[0]), actions]
 
     def preprocess(self, batch):
         # first and last states for every entry
