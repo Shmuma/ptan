@@ -210,6 +210,14 @@ class QLearningPreprocessor(BatchPreprocessor):
         return q_last_target[range(q_last_target.shape[0]), actions]
 
     def preprocess(self, batch):
+        """
+        Calculates data for Q learning from batch of observations
+        :param batch: list of lists of Experience objects
+        :return: tuple of numpy arrays: 
+            1. states -- observations
+            2. target Q-values
+            3. vector of td errors for every batch entry
+        """
         # first and last states for every entry
         state_0 = np.array([exp[0].state for exp in batch], dtype=np.float32)
         state_L = np.array([exp[-1].state for exp in batch], dtype=np.float32)
@@ -217,15 +225,18 @@ class QLearningPreprocessor(BatchPreprocessor):
         q0, qL = self._calc_Q(state_0, state_L)
         rewards = self._calc_target_rewards(state_L, qL)
 
+        td = np.zeros(shape=(len(batch),))
+
         for idx, (total_reward, exps) in enumerate(zip(rewards, batch)):
-            # game is done, no final resward
+            # game is done, no final reward
             if exps[-1].done:
                 total_reward = 0.0
             for exp in reversed(exps[:-1]):
                 total_reward *= self.gamma
                 total_reward += exp.reward
-            # update total reward
-            # TODO: here we should calculate TD-error
-            q0[idx][exps[0].action] = total_reward
+            # update total reward and calculate td error
+            act = exps[0].action
+            td[idx] = q0[idx][act] - total_reward
+            q0[idx][act] = total_reward
 
-        return torch.from_numpy(state_0), torch.from_numpy(q0)
+        return state_0, q0, td

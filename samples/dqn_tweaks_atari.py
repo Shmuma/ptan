@@ -120,59 +120,6 @@ if __name__ == "__main__":
     else:
         raise RuntimeError("Wrong combination of target/double DQN parameters")
 
-    # running sums of batch values
-    # batches_count = 0
-    # batches_sum_q0 = 0.0
-    #
-    # def batch_to_train(batch):
-    #     """
-    #     Convert batch into training data using bellman's equation
-    #     :param batch: list of tuples with Experience instances
-    #     :return:
-    #     """
-    #     v0_data = []
-    #     vL_data = []
-    #
-    #     for exps in batch:
-    #         v0_data.append(exps[0].state)
-    #         vL_data.append(exps[-1].state)
-    #
-    #     states_t = torch.from_numpy(np.array(v0_data, dtype=np.float32))
-    #     v0 = Variable(states_t)
-    #     vL = Variable(torch.from_numpy(np.array(vL_data, dtype=np.float32)))
-    #     if params.cuda_enabled:
-    #         v0 = v0.cuda()
-    #         vL = vL.cuda()
-    #
-    #     q0 = model(v0).data
-    #
-    #     global batches_count, batches_sum_q0
-    #     batches_count += 1
-    #     batches_sum_q0 += q0.mean()
-    #
-    #     if use_target_dqn and use_double_dqn:
-    #         qL = model(vL)
-    #         actions = qL.data.cpu().max(1)[1].squeeze().numpy()
-    #         qL = target_model(vL).data.cpu().numpy()
-    #         total_rewards = qL[range(qL.shape[0]), actions]
-    #     # only target is in use: use best value from it
-    #     elif use_target_dqn:
-    #         q = target_model(vL)
-    #         total_rewards = q.data.max(1)[0].squeeze().cpu().numpy()
-    #     else:
-    #         q = model(vL)
-    #         total_rewards = q.data.max(1)[0].squeeze().cpu().numpy()
-    #     for idx, exps in enumerate(batch):
-    #         # game is done, no final reward
-    #         if exps[-1].done:
-    #             total_reward = 0.0
-    #         else:
-    #             total_reward = total_rewards[idx]
-    #         for exp in reversed(exps[:-1]):
-    #             total_reward = exp.reward + GAMMA * total_reward
-    #         q0[idx][exps[0].action] = total_reward
-    #     return states_t, q0
-
     reward_sma = utils.SMAQueue(run.getint("stop", "mean_games", fallback=100))
     speed_mon = utils.SpeedMonitor(run.getint("learning", "batch_size"))
 
@@ -183,11 +130,12 @@ if __name__ == "__main__":
             exp_replay.populate(run.getint("exp_buffer", "populate"))
 
             losses = []
+            mean_tderr = []
             for batch in exp_replay.batches(run.getint("learning", "batch_size")):
                 optimizer.zero_grad()
 
-                states, q_vals = preprocessor.preprocess(batch)
-                states, q_vals = Variable(states), Variable(q_vals)
+                states, q_vals, td_err = preprocessor.preprocess(batch)
+                states, q_vals = Variable(torch.from_numpy(states)), Variable(torch.from_numpy(q_vals))
                 if params.cuda_enabled:
                     states = states.cuda()
                     q_vals = q_vals.cuda()
@@ -196,6 +144,7 @@ if __name__ == "__main__":
                 l.backward()
                 optimizer.step()
                 speed_mon.batch()
+                mean_tderr.append(np.mean(np.abs(td_err)))
 
             action_selector.epsilon *= run.getfloat("defaults", "epsilon_decay")
             if run.has_option("defaults", "epsilon_minimum"):
@@ -212,10 +161,7 @@ if __name__ == "__main__":
                     lr = param_group['lr']
                 tb.log_value("lr", lr, step=idx)
 
-#            tb.log_value("qvals_mean", batches_sum_q0 / batches_count, step=idx)
-#            batches_count = 0
-#            batches_sum_total_reward = batches_sum_q0 = 0.0
-
+            tb.log_value("td_mean", np.mean(td_err), step=idx)
             tb.log_value("loss", np.mean(losses), step=idx)
             tb.log_value("epsilon", action_selector.epsilon, step=idx)
 
