@@ -131,7 +131,8 @@ if __name__ == "__main__":
 
             losses = []
             mean_tderr = []
-            for batch in exp_replay.batches(run.getint("learning", "batch_size")):
+            for batch_idx in range(run.getint("exp_buffer", "epoch_batches")):
+                batch = exp_replay.sample(run.getint("learning", "batch_size"))
                 optimizer.zero_grad()
 
                 states, q_vals, td_err = preprocessor.preprocess(batch)
