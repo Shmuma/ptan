@@ -155,7 +155,11 @@ class PrioritizedReplayBuffer:
         batch_idx = np.random.choice(indices, batch_size, p=self.probs)
         batch_dat = [self.buffer[idx] for idx in batch_idx]
         weights = [(1. / (len(self.buffer) * self.probs[idx])) ** self.weight_beta for idx in batch_idx]
-        return batch_dat, batch_idx, weights
+
+        # normalize weights
+        max_w = max(weights)
+        res_weights = [w / max_w for w in weights]
+        return batch_dat, batch_idx, res_weights
 
     def populate(self, samples):
         """
