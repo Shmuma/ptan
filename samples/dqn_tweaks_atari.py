@@ -106,7 +106,7 @@ if __name__ == "__main__":
     target_net = agent.TargetNet(model)
     dqn_agent = agent.DQNAgent(dqn_model=model, action_selector=action_selector)
     exp_source = experience.ExperienceSource(env=env_pool, agent=dqn_agent, steps_count=run.getint("defaults", "n_steps"))
-    exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
+    exp_replay = experience.PrioritizedReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
 
     use_target_dqn = run.getboolean("dqn", "target_dqn", fallback=False)
     use_double_dqn = run.getboolean("dqn", "double_dqn", fallback=False)
@@ -132,10 +132,11 @@ if __name__ == "__main__":
             losses = []
             mean_tderr = []
             for batch_idx in range(run.getint("exp_buffer", "epoch_batches")):
-                batch = exp_replay.sample(run.getint("learning", "batch_size"))
+                batch, batch_indices, batch_weights = exp_replay.sample(run.getint("learning", "batch_size"))
                 optimizer.zero_grad()
 
                 states, q_vals, td_err = preprocessor.preprocess(batch)
+                exp_replay.update_priorities(batch_indices, np.abs(td_err))
                 states, q_vals = Variable(torch.from_numpy(states)), Variable(torch.from_numpy(q_vals))
                 if params.cuda_enabled:
                     states = states.cuda()

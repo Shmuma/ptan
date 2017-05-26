@@ -123,6 +123,74 @@ class ExperienceReplayBuffer:
                 self.buffer.popleft()
 
 
+class PrioritizedReplayBuffer:
+    def __init__(self, experience_source, buffer_size, prob_alpha=1.0, weight_beta=1.0):
+        """
+        Construct prioritized replay buffer
+        :param experience_source: source of experience we're going to use 
+        :param buffer_size: max size of buffer 
+        :param prob_alpha: exponent for probabilities 
+        :param weight_beta: exponent for weights 
+        """
+        self.buffer_size = buffer_size
+        self.experience_source = experience_source
+        self.experience_source_iter = iter(experience_source)
+        self.prob_alpha = prob_alpha
+        self.weight_beta = weight_beta
+        self.buffer = deque()
+        self.probs = deque()
+
+    def __len__(self):
+        return len(self.buffer)
+
+    def sample(self, batch_size):
+        """
+        Sample batch from experience replay, returning data, indices and sample weights.
+        
+        Indices should be passed for call update_priorities()
+        :param batch_size: 
+        :return: tuple of (batch_data, batch_indices, weights) 
+        """
+        indices = range(len(self.buffer))
+        batch_idx = np.random.choice(indices, batch_size, p=self.probs)
+        batch_dat = [self.buffer[idx] for idx in batch_idx]
+        weights = [(1. / (len(self.buffer) * self.probs[idx])) ** self.weight_beta for idx in batch_idx]
+        return batch_dat, batch_idx, weights
+
+    def populate(self, samples):
+        """
+        Fetch given amount of samples into the buffer
+        :param samples: 
+        """
+        max_prob = max(self.probs) if self.probs else 1.0
+
+        while samples > 0:
+            entry = next(self.experience_source_iter)
+            self.buffer.append(entry)
+            self.probs.append(max_prob)
+            samples -= 1
+        while len(self.buffer) > self.buffer_size:
+            self.buffer.popleft()
+            self.probs.popleft()
+        self._normalize_probs()
+
+    def update_priorities(self, batch_indices, batch_priorities):
+        """
+        Update batch item priorities, should be called after TD error 
+        calculation to update probability of sampling.
+        :param batch_indices: indices returned by sample() call 
+        :param batch_priorities: list of numbers reflecting priorities 
+        """
+        for idx, priority in zip(batch_indices, batch_priorities):
+            self.probs[idx] = priority ** self.prob_alpha
+        self._normalize_probs()
+
+    def _normalize_probs(self):
+        s = sum(self.probs)
+        for idx, p in enumerate(self.probs):
+            self.probs[idx] = p / s
+
+
 class BatchPreprocessor:
     """
     Abstract preprocessor class descendants to which converts experience 
