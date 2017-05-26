@@ -130,7 +130,6 @@ if __name__ == "__main__":
             exp_replay.populate(run.getint("exp_buffer", "populate"))
 
             losses = []
-            mean_tderr = []
             for batch_idx in range(run.getint("exp_buffer", "epoch_batches")):
                 batch, batch_indices, batch_weights = exp_replay.sample(run.getint("learning", "batch_size"))
                 optimizer.zero_grad()
@@ -148,7 +147,6 @@ if __name__ == "__main__":
                 l.backward()
                 optimizer.step()
                 speed_mon.batch()
-                mean_tderr.append(np.mean(np.abs(td_err)))
 
             action_selector.epsilon *= run.getfloat("defaults", "epsilon_decay")
             if run.has_option("defaults", "epsilon_minimum"):
@@ -165,7 +163,6 @@ if __name__ == "__main__":
                     lr = param_group['lr']
                 tb.log_value("lr", lr, step=idx)
 
-            tb.log_value("td_mean", np.mean(td_err), step=idx)
             tb.log_value("loss", np.mean(losses), step=idx)
             tb.log_value("epsilon", action_selector.epsilon, step=idx)
 
