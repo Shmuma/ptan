@@ -99,7 +99,7 @@ if __name__ == "__main__":
     if params.cuda_enabled:
         model.cuda()
 
-    loss_fn = nn.MSELoss()
+    loss_fn = utils.WeightedMSELoss(size_average=True)
     optimizer = optim.Adam(model.parameters(), lr=run.getfloat("learning", "lr"))
 
     action_selector = ActionSelectorEpsilonGreedy(epsilon=run.getfloat("defaults", "epsilon"), params=params)
@@ -138,10 +138,12 @@ if __name__ == "__main__":
                 states, q_vals, td_err = preprocessor.preprocess(batch)
                 exp_replay.update_priorities(batch_indices, np.abs(td_err))
                 states, q_vals = Variable(torch.from_numpy(states)), Variable(torch.from_numpy(q_vals))
+                weights = Variable(torch.from_numpy(np.array(batch_weights, dtype=np.float32)))
                 if params.cuda_enabled:
                     states = states.cuda()
                     q_vals = q_vals.cuda()
-                l = loss_fn(model(states), q_vals)
+                    weights = weights.cuda()
+                l = loss_fn(model(states), q_vals, weights)
                 losses.append(l.data.cpu().numpy())
                 l.backward()
                 optimizer.step()

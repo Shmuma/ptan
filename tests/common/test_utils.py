@@ -1,7 +1,11 @@
 import time
 from unittest import TestCase
+import numpy as np
+import torch
+from torch.autograd import Variable
 
-from ptan.common.utils import SMAQueue, SpeedMonitor
+from ptan.common.utils import SMAQueue, SpeedMonitor, WeightedMSELoss
+
 
 
 class TestSMAQueue(TestCase):
@@ -85,3 +89,32 @@ class TestSpeedMonitor(TestCase):
         ss = m.samples_per_sec()
         self.assertGreaterEqual(ss, 66)
         self.assertLessEqual(ss, 70)
+
+
+class TestWeightedMSELoss(TestCase):
+    def get_loss(self, loss, input, target, weights=None):
+        input_v = Variable(torch.from_numpy(np.array(input)))
+        target_v = Variable(torch.from_numpy(np.array(target)))
+        if weights is not None:
+            weights_v = Variable(torch.from_numpy(np.array(weights)))
+        else:
+            weights_v = None
+        return loss(input_v, target_v, weights_v).data.numpy()
+
+    def test_no_weights(self):
+        loss = WeightedMSELoss(size_average=False)
+
+        np.testing.assert_almost_equal(self.get_loss(loss, [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]), [0.0])
+        np.testing.assert_almost_equal(self.get_loss(loss, [1.0, 1.0, 1.0], [0.0, 2.0, 0.0]), [3.0])
+        np.testing.assert_almost_equal(self.get_loss(loss, [1.0, 1.0, 1.0], [1.0, 5.0, 1.0]), [16.0])
+
+        loss = WeightedMSELoss(size_average=True)
+        np.testing.assert_almost_equal(self.get_loss(loss, [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]), [0.0])
+        np.testing.assert_almost_equal(self.get_loss(loss, [1.0, 1.0, 1.0], [0.0, 2.0, 0.0]), [1.0])
+        np.testing.assert_almost_equal(self.get_loss(loss, [1.0, 1.0, 1.0], [1.0, 5.0, 1.0]), [16.0/3])
+
+    def test_weights(self):
+        loss = WeightedMSELoss(size_average=False)
+
+        np.testing.assert_almost_equal(self.get_loss(loss, [1.0, 1.0, 1.0], [0.0, 2.0, 0.0], [1.0, 3.0, 2.0]), [6.0])
+        np.testing.assert_almost_equal(self.get_loss(loss, [1.0, 1.0, 1.0], [1.0, 5.0, 1.0], [1.0, 1.0/4, 1.0]), [4.0])

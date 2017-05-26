@@ -3,6 +3,9 @@ from datetime import timedelta
 import numpy as np
 import collections
 
+import torch
+import torch.nn as nn
+
 
 class SMAQueue:
     """
@@ -110,4 +113,19 @@ class SpeedMonitor:
             s /= self.batches + 1
         return timedelta(seconds=s)
 
+
+class WeightedMSELoss(nn.Module):
+    def __init__(self, size_average=True):
+        super(WeightedMSELoss, self).__init__()
+        self.size_average = size_average
+
+    def forward(self, input, target, weights=None):
+        if weights is None:
+            return nn.MSELoss(self.size_average)(input, target)
+
+        loss_rows = torch.sum((input - target) ** 2, dim=1)
+        res = (weights * loss_rows).sum()
+        if self.size_average:
+            res /= len(weights)
+        return res
 
