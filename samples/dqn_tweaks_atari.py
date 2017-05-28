@@ -106,7 +106,9 @@ if __name__ == "__main__":
     target_net = agent.TargetNet(model)
     dqn_agent = agent.DQNAgent(dqn_model=model, action_selector=action_selector)
     exp_source = experience.ExperienceSource(env=env_pool, agent=dqn_agent, steps_count=run.getint("defaults", "n_steps"))
-    exp_replay = experience.PrioritizedReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
+    exp_replay = experience.PrioritizedReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"),
+                                                    prob_alpha=run.getfloat("exp_buffer", "prio_alpha"),
+                                                    weight_beta=run.getfloat("exp_buffer", "prio_beta"))
 
     use_target_dqn = run.getboolean("dqn", "target_dqn", fallback=False)
     use_double_dqn = run.getboolean("dqn", "double_dqn", fallback=False)
