@@ -25,8 +25,9 @@ REPORT_ITERS = 10
 
 
 class Net(nn.Module):
-    def __init__(self, n_actions, input_shape):
+    def __init__(self, n_actions, input_shape, dueling=False):
         super(Net, self).__init__()
+        self.dueling = dueling
         self.conv1 = nn.Conv2d(input_shape[0], 32, 5)
         self.conv2 = nn.Conv2d(32, 32, 3)
         self.conv3 = nn.Conv2d(32, 64, 2)
@@ -36,6 +37,9 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(n_size, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, n_actions)
+        if self.dueling:
+            self.fc2_v = nn.Linear(256, 256)
+            self.fc3_v = nn.Linear(256, 1)
 
     def _get_conv_output(self, shape):
         input = Variable(torch.rand(1, *shape))
@@ -53,10 +57,15 @@ class Net(nn.Module):
     def forward(self, x):
         x = self._forward_conv(x)
         x = x.view(x.size(0), -1)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
+        y = F.relu(self.fc1(x))
+        q = F.relu(self.fc2(y))
+        q = self.fc3(q)
+        if self.dueling:
+            v = F.relu((self.fc2_v(y)))
+            v = self.fc3_v(v)
+            q -= q.max().expand_as(q)
+            q += v.expand_as(q)
+        return q
 
 
 if __name__ == "__main__":
@@ -95,7 +104,8 @@ if __name__ == "__main__":
     params.load_runfile(run)
     env_params.register(params)
 
-    model = Net(params.n_actions, input_shape=(frames_count if grayscale else 3*frames_count, im_height, im_width))
+    model = Net(params.n_actions, input_shape=(frames_count if grayscale else 3*frames_count, im_height, im_width),
+                dueling=run.getboolean("dqn", "dueling"))
     if params.cuda_enabled:
         model.cuda()
 
