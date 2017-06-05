@@ -144,7 +144,8 @@ if __name__ == "__main__":
 
             losses = []
             for batch_idx in range(run.getint("exp_buffer", "epoch_batches")):
-                batch, batch_indices, batch_weights = exp_replay.sample(run.getint("learning", "batch_size"))
+                # batch, batch_indices, batch_weights = exp_replay.sample(run.getint("learning", "batch_size"))
+                batch = exp_replay.sample(run.getint("learning", "batch_size"))
                 optimizer.zero_grad()
 
                 states, q_vals, td_err = preprocessor.preprocess(batch)
