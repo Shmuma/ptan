@@ -148,7 +148,7 @@ if __name__ == "__main__":
                 optimizer.zero_grad()
 
                 states, q_vals, td_err = preprocessor.preprocess(batch)
-                exp_replay.update_priorities(batch_indices, np.abs(td_err))
+                # exp_replay.update_priorities(batch_indices, np.abs(td_err))
                 states, q_vals = Variable(torch.from_numpy(states)), Variable(torch.from_numpy(q_vals))
                 weights = Variable(torch.from_numpy(np.array(batch_weights, dtype=np.float32)))
                 if params.cuda_enabled:
