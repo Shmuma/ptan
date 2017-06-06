@@ -109,8 +109,7 @@ if __name__ == "__main__":
     if params.cuda_enabled:
         model.cuda()
 
-#    loss_fn = utils.WeightedMSELoss(size_average=True)
-    loss_fn = nn.MSELoss()
+    loss_fn = utils.WeightedMSELoss(size_average=True)
     optimizer = optim.Adam(model.parameters(), lr=run.getfloat("learning", "lr"))
 
     action_selector = ActionSelectorEpsilonGreedy(epsilon=run.getfloat("defaults", "epsilon"), params=params)
