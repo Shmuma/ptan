@@ -22,4 +22,11 @@ class TestActionSelectorEpsilonGreedy(TestCase):
         r = selector(Variable(q))
         self.assertTrue(r.data.eq(torch.LongTensor([0, 1, 1])).all())
 
+    def test_random(self):
+        selector = ActionSelectorEpsilonGreedy(epsilon=1.0, params=self.params)
+        q = torch.Tensor([[1.0, 0.0],
+                          [0.0, 1.0],
+                          [0.2, 0.8]])
+        r = selector(Variable(q))
+        self.assertEqual(r.size(), (3, 1))
 
