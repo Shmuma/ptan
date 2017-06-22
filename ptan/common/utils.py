@@ -123,7 +123,9 @@ class WeightedMSELoss(nn.Module):
         if weights is None:
             return nn.MSELoss(self.size_average)(input, target)
 
-        loss_rows = torch.sum((input - target) ** 2, dim=1)
+        loss_rows = (input - target) ** 2
+        if len(loss_rows.size()) != 1:
+            loss_rows = torch.sum(loss_rows, dim=1)
         res = (weights * loss_rows).sum()
         if self.size_average:
             res /= len(weights)
