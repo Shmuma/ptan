@@ -4,6 +4,7 @@ import argparse
 import torch
 import torch.nn as nn
 
+import ptan
 from ptan.common import runfile, env_params
 
 import gym
@@ -29,12 +30,18 @@ if __name__ == "__main__":
     model = nn.Sequential(
         nn.Linear(params.state_shape[0], 100),
         nn.ReLU(),
-        nn.Linear(100, 100),
+        nn.Linear(100, 50),
         nn.ReLU(),
         nn.Linear(50, params.n_actions),
         nn.Softmax()
     )
     if cuda_enabled:
         model.cuda()
+
+    agent = ptan.agent.PolicyAgent(model)
+    exp_source = ptan.experience.ExperienceSource(env=env, agent=agent, steps_count=run.getint("defaults", "n_steps"))
+
+    for exp in exp_source:
+        print(exp)
 
     pass

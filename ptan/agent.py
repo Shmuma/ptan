@@ -28,7 +28,7 @@ class DQNAgent:
 
 class TargetNet:
     """
-    Wrapper around model which provides copy of it instead of trained weights 
+    Wrapper around model which provides copy of it instead of trained weights
     """
     def __init__(self, model):
         self.model = model
@@ -36,3 +36,27 @@ class TargetNet:
 
     def sync(self):
         self.target_model.load_state_dict(self.model.state_dict())
+
+
+class PolicyAgent:
+    """
+    Policy agent gets action probabilities from the model and samples actions from it
+    """
+    def __init__(self, model):
+        self.model = model
+
+    def __call__(self, states):
+        """
+        Return actions from given list of states
+        :param states: list of states
+        :return: list of actions
+        """
+        v = Variable(torch.from_numpy(np.array(states, dtype=np.float32)))
+        if env_params.get().cuda_enabled:
+            v = v.cuda()
+        probs = self.model(v).data.cpu().numpy()
+        actions = []
+        for prob in probs:
+            actions.append(np.random.choice(len(prob), p=prob))
+        return np.array(actions)
+
