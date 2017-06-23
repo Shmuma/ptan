@@ -55,6 +55,7 @@ if __name__ == "__main__":
         :param batch: batch data
         :return: loss tensor
         """
+        entropy_beta = run.getfloat("defaults", "entropy_beta", fallback=0.0)
         result = Variable(torch.FloatTensor(1).zero_())
         for exps in batch:
             # calculate total reward
@@ -65,6 +66,9 @@ if __name__ == "__main__":
 
             v = Variable(torch.from_numpy(np.array([exps[0].state], dtype=np.float32)))
             probs = model(v)[0]
+            lp = probs.log()
+            entropy = torch.sum(torch.mul(lp, probs))
+            result += entropy_beta * entropy
             prob = probs[exps[0].action]
             result += -prob.log() * R
         return result / len(batch)
