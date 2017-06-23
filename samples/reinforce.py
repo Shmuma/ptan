@@ -3,6 +3,7 @@ import argparse
 
 import torch
 import torch.nn as nn
+import torch.optim as optim
 
 import ptan
 from ptan.common import runfile, env_params
@@ -40,8 +41,23 @@ if __name__ == "__main__":
 
     agent = ptan.agent.PolicyAgent(model)
     exp_source = ptan.experience.ExperienceSource(env=env, agent=agent, steps_count=run.getint("defaults", "n_steps"))
+    exp_buffer = ptan.experience.ExperienceReplayBuffer(exp_source, run.getint("exp_buffer", "size"))
 
-    for exp in exp_source:
-        print(exp)
+    optimizer = optim.Adam(model.parameters(), lr=run.getfloat("learning", "lr"))
+
+    def calc_loss(batch):
+        """
+        Calculate loss expression from data batch
+        :param batch: batch data 
+        :return: loss tensor
+        """
+        result = torch.zero()
+        for exp in batch:
+            # calculate total reward
+            probs = model(exp[0].state)
+
+    while True:
+        exp_buffer.populate(run.getint("exp_buffer", "populate"))
+        batch = exp_buffer.sample(run.getint("learning", "batch_size"))
 
     pass
