@@ -69,13 +69,24 @@ if __name__ == "__main__":
             result += -prob.log() * R
         return result / len(batch)
 
+    iter = 0
     while True:
         exp_buffer.populate(run.getint("exp_buffer", "populate"))
-        batch = exp_buffer.sample(run.getint("learning", "batch_size"))
-        optimizer.zero_grad()
-        loss = calc_loss(batch)
-        loss.backward()
-        optimizer.step()
-        print(loss.data.cpu().numpy()[0])
+        #        batch = exp_buffer.sample(run.getint("learning", "batch_size"))
+        losses = []
+        for batch in exp_buffer.batches(run.getint("learning", "batch_size")):
+            optimizer.zero_grad()
+            loss = calc_loss(batch)
+            loss.backward()
+            optimizer.step()
+            losses.append(loss.data.cpu().numpy()[0])
+
+        total_rewards = exp_source.pop_total_rewards()
+        mean_reward = np.mean(total_rewards) if total_rewards else 0.0
+
+        print("%d: mean reward %.3f in %d games, loss %.3f" % (iter, mean_reward, len(total_rewards), np.mean(losses)))
+        iter += 1
+        if mean_reward > 300:
+            break
 
     pass
