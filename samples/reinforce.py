@@ -33,10 +33,10 @@ if __name__ == "__main__":
 
     # model returns probability of actions
     model = nn.Sequential(
-        nn.Linear(params.state_shape[0], 100),
+        nn.Linear(params.state_shape[0], 50),
         nn.ReLU(),
-        nn.Linear(100, 50),
-        nn.ReLU(),
+        # nn.Linear(100, 50),
+        # nn.ReLU(),
         nn.Linear(50, params.n_actions),
         nn.Softmax()
     )
@@ -74,6 +74,7 @@ if __name__ == "__main__":
         return result / len(batch)
 
     iter = 0
+    min_iters = run.getint("defaults", "min_iters", fallback=0)
     while True:
         exp_buffer.populate(run.getint("exp_buffer", "populate"))
         #        batch = exp_buffer.sample(run.getint("learning", "batch_size"))
@@ -90,7 +91,7 @@ if __name__ == "__main__":
 
         print("%d: mean reward %.3f in %d games, loss %.3f" % (iter, mean_reward, len(total_rewards), np.mean(losses)))
         iter += 1
-        if mean_reward > 300:
+        if iter > min_iters and mean_reward > 300:
             break
 
     pass
