@@ -35,6 +35,12 @@ class Model(nn.Module):
         return policy, value
 
 
+def a3c_actor_wrapper(model):
+    def _wrap(x):
+        x = model(x)
+        return x[0]
+    return _wrap
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -57,7 +63,48 @@ if __name__ == "__main__":
     if cuda_enabled:
         model.cuda()
 
-    v = Variable(torch.from_numpy(np.array([env.reset()], dtype=np.float32)))
-    res = model(v)
-    print(res)
-    pass
+    agent = ptan.agent.PolicyAgent(a3c_actor_wrapper(model))
+    exp_source = ptan.experience.ExperienceSource(env=env, agent=agent, steps_count=run.getint("defaults", "n_steps"))
+
+    optimizer = optim.Adam(model.parameters(), lr=run.getfloat("learning", "lr"))
+
+    batch = []
+
+    def calc_loss(batch):
+        """
+        Calculate loss from experience batch
+        :param batch: list of experience entries
+        :return: loss variable
+        """
+        # quite inefficient way, should be reordered to minimize amount of model() calls
+        result = Variable(torch.FloatTensor(1).zero_())
+
+        for exps in batch:
+            v = Variable(torch.from_numpy(np.array([exps[0].state], dtype=np.float32)))
+            policy_s, value_s = model(v)
+            policy_s = policy_s[0]
+            value_s = value_s[0].data.cpu().numpy()[0]
+            if exps[-1].done:
+                value_last_s = 0
+            else:
+                v = Variable(torch.from_numpy(np.array([exps[-1].state], dtype=np.float32)))
+                _, value_last_s = model(v)
+                value_last_s = value_last_s[0].data.cpu().numpy()[0]
+            R = value_last_s
+            for exp in reversed(exps):
+                R *= GAMMA
+                R += exp.reward
+            advantage = R - value_s
+            result += -advantage * policy_s.log()[exps[0].action]
+
+        return result
+
+    for exp in exp_source:
+        batch.append(exp)
+        if len(batch) < run.getint("learning", "batch_size"):
+            continue
+
+        # handle batch with experience
+        loss = calc_loss(batch)
+        print(loss)
+        break
