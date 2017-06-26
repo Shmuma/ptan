@@ -57,6 +57,7 @@ if __name__ == "__main__":
     if cuda_enabled:
         model.cuda()
 
-    res = model(env.reset())
+    v = Variable(torch.from_numpy(np.array([env.reset()], dtype=np.float32)))
+    res = model(v)
     print(res)
     pass
