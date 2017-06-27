@@ -13,7 +13,9 @@ from ptan.common import runfile, env_params
 
 import gym
 
-from bokeh.plotting import figure, output_file, show
+import bokeh
+from bokeh.plotting import figure
+from bokeh.io import output_file, show
 
 GAMMA = 0.99
 
@@ -23,15 +25,15 @@ class Model(nn.Module):
         super(Model, self).__init__()
 
         self.fc1 = nn.Linear(input_len, 50)
-        self.fc2 = nn.Linear(50, 50)
+        # self.fc2 = nn.Linear(50, 50)
         self.out_policy = nn.Linear(50, n_actions)
         self.out_value = nn.Linear(50, 1)
 
     def forward(self, x):
         x = self.fc1(x)
         x = F.relu(x)
-        x = self.fc2(x)
-        x = F.relu(x)
+        # x = self.fc2(x)
+        # x = F.relu(x)
         policy = F.softmax(self.out_policy(x))
         value = self.out_value(x)
         return policy, value
@@ -68,9 +70,11 @@ if __name__ == "__main__":
     agent = ptan.agent.PolicyAgent(a3c_actor_wrapper(model))
     exp_source = ptan.experience.ExperienceSource(env=env, agent=agent, steps_count=run.getint("defaults", "n_steps"))
 
-    optimizer = optim.Adam(model.parameters(), lr=run.getfloat("learning", "lr"))
+    optimizer = optim.RMSprop(model.parameters(), lr=run.getfloat("learning", "lr"))
 
     batch = []
+
+    entropy_beta = run.getfloat("defaults", "entropy_beta", fallback=0.0)
 
     def calc_loss(batch):
         """
@@ -80,6 +84,12 @@ if __name__ == "__main__":
         """
         # quite inefficient way, should be reordered to minimize amount of model() calls
         result = Variable(torch.FloatTensor(1).zero_())
+
+        # extra values to monitor
+        mon_adv = []
+        mon_val_loss = []
+        mon_pol_loss = []
+        mon_ent_loss = []
 
         for exps in batch:
             v = Variable(torch.from_numpy(np.array([exps[0].state, exps[-1].state], dtype=np.float32)))
@@ -93,12 +103,27 @@ if __name__ == "__main__":
                 R += exp.reward
             advantage = R - t_value_s.data.cpu().numpy()[0]
             # policy loss part
-            result += -t_policy_s.log()[exps[0].action] * advantage
+            loss_policy = -t_policy_s.log()[exps[0].action] * advantage
             # value loss part
-            result += (t_value_s - R) ** 2
-            # TODO: entropy loss
+            loss_value = 0.5 * (t_value_s - R) ** 2
+            # entropy loss
+            loss_entropy = entropy_beta * (t_policy_s*t_policy_s.log()).sum()
+            result += loss_policy + loss_value + loss_entropy
 
-        return result / len(batch)
+            # monitor stuff
+            mon_adv.append(advantage)
+            mon_val_loss.append(loss_value.data.cpu().numpy()[0])
+            mon_pol_loss.append(loss_policy.data.cpu().numpy()[0])
+            mon_ent_loss.append(loss_entropy.data.cpu().numpy()[0])
+
+        monitor = {
+            'advantage': np.mean(mon_adv),
+            'value_loss': np.mean(mon_val_loss),
+            'policy_loss': np.mean(mon_pol_loss),
+            'entropy_loss': np.mean(mon_ent_loss),
+        }
+
+        return result / len(batch), monitor
 
     losses = []
     rewards = []
@@ -107,6 +132,10 @@ if __name__ == "__main__":
     graph_data = {
         'full_loss': [],
         'rewards': [],
+        'advantage': [],
+        'value_loss': [],
+        'policy_loss': [],
+        'entropy_loss': []
     }
 
     for exp in exp_source:
@@ -116,7 +145,7 @@ if __name__ == "__main__":
 
         # handle batch with experience
         optimizer.zero_grad()
-        loss = calc_loss(batch)
+        loss, monitor = calc_loss(batch)
         loss.backward()
         optimizer.step()
         f_loss = loss.data.cpu().numpy()[0]
@@ -129,9 +158,12 @@ if __name__ == "__main__":
         losses = losses[-10:]
         rewards = rewards[-10:]
 
-        print("%d: mean_loss=%.3f, mean_reward=%.3f" % (iter_idx, np.mean(losses), np.mean(rewards)))
+        print("%d: mean_loss=%.3f, mean_reward=%.3f, done_games=%d" % (
+            iter_idx, np.mean(losses), np.mean(rewards), len(new_rewards)))
         graph_data['full_loss'].append(f_loss)
         graph_data['rewards'].extend(new_rewards)
+        for k, v in monitor.items():
+            graph_data[k].append(v)
 
         if np.mean(rewards) > 300:
             break
@@ -139,6 +171,29 @@ if __name__ == "__main__":
     # plot charts
     output_file("a2c.html")
 
+    figures = []
     f = figure(title="Full loss")
     f.line(range(iter_idx), graph_data['full_loss'])
-    show(f)
+    figures.append(f)
+
+    f = figure(title="Policy loss")
+    f.line(range(iter_idx), graph_data['policy_loss'])
+    figures.append(f)
+
+    f = figure(title="Value loss")
+    f.line(range(iter_idx), graph_data['value_loss'])
+    figures.append(f)
+
+    f = figure(title="Entropy loss")
+    f.line(range(iter_idx), graph_data['entropy_loss'])
+    figures.append(f)
+
+    f = figure(title="Rewards")
+    f.line(range(iter_idx), graph_data['rewards'])
+    figures.append(f)
+
+    f = figure(title="Advantage")
+    f.line(range(iter_idx), graph_data['advantage'])
+    figures.append(f)
+
+    show(bokeh.layouts.column(*figures))
