@@ -24,16 +24,16 @@ class Model(nn.Module):
     def __init__(self, n_actions, input_len):
         super(Model, self).__init__()
 
-        self.fc1 = nn.Linear(input_len, 50)
-        # self.fc2 = nn.Linear(50, 50)
-        self.out_policy = nn.Linear(50, n_actions)
-        self.out_value = nn.Linear(50, 1)
+        self.fc1 = nn.Linear(input_len, 100)
+        self.fc2 = nn.Linear(100, 100)
+        self.out_policy = nn.Linear(100, n_actions)
+        self.out_value = nn.Linear(100, 1)
 
     def forward(self, x):
         x = self.fc1(x)
         x = F.relu(x)
-        # x = self.fc2(x)
-        # x = F.relu(x)
+        x = self.fc2(x)
+        x = F.relu(x)
         policy = F.softmax(self.out_policy(x))
         value = self.out_value(x)
         return policy, value
@@ -138,6 +138,9 @@ if __name__ == "__main__":
         'entropy_loss': []
     }
 
+    mean_games = run.getint("stop", "mean_games")
+    mean_reward = run.getfloat("stop", "mean_reward")
+
     for exp in exp_source:
         batch.append(exp)
         if len(batch) < run.getint("learning", "batch_size"):
@@ -156,16 +159,17 @@ if __name__ == "__main__":
         new_rewards = exp_source.pop_total_rewards()
         rewards.extend(new_rewards)
         losses = losses[-10:]
-        rewards = rewards[-10:]
+        rewards = rewards[-mean_games:]
 
         print("%d: mean_loss=%.3f, mean_reward=%.3f, done_games=%d" % (
-            iter_idx, np.mean(losses), np.mean(rewards), len(new_rewards)))
+            iter_idx, 0.0 if not losses else np.mean(losses),
+            0.0 if not rewards else np.mean(rewards), len(new_rewards)))
         graph_data['full_loss'].append(f_loss)
         graph_data['rewards'].extend(new_rewards)
         for k, v in monitor.items():
             graph_data[k].append(v)
 
-        if np.mean(rewards) > 300:
+        if np.mean(rewards) > mean_reward:
             break
 
     # plot charts
