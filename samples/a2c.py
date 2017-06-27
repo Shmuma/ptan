@@ -80,24 +80,27 @@ if __name__ == "__main__":
         result = Variable(torch.FloatTensor(1).zero_())
 
         for exps in batch:
-            v = Variable(torch.from_numpy(np.array([exps[0].state], dtype=np.float32)))
+            v = Variable(torch.from_numpy(np.array([exps[0].state, exps[-1].state], dtype=np.float32)))
             policy_s, value_s = model(v)
-            policy_s = policy_s[0]
-            value_s = value_s[0].data.cpu().numpy()[0]
-            if exps[-1].done:
-                value_last_s = 0
-            else:
-                v = Variable(torch.from_numpy(np.array([exps[-1].state], dtype=np.float32)))
-                _, value_last_s = model(v)
-                value_last_s = value_last_s[0].data.cpu().numpy()[0]
-            R = value_last_s
+            t_policy_s = policy_s[0]
+            t_value_s = value_s[0]
+            t_value_last_s = value_s[1]
+            R = 0.0 if exps[-1].done else t_value_last_s.data.cpu().numpy()[0]
             for exp in reversed(exps):
                 R *= GAMMA
                 R += exp.reward
-            advantage = R - value_s
-            result += -advantage * policy_s.log()[exps[0].action]
+            advantage = R - t_value_s.data.cpu().numpy()[0]
+            # policy loss part
+            result += -t_policy_s.log()[exps[0].action] * advantage
+            # value loss part
+            result += (t_value_s - R) ** 2
+            # TODO: entropy loss
 
-        return result
+        return result / len(batch)
+
+    losses = []
+    rewards = []
+    iter_idx = 0
 
     for exp in exp_source:
         batch.append(exp)
@@ -105,6 +108,17 @@ if __name__ == "__main__":
             continue
 
         # handle batch with experience
+        optimizer.zero_grad()
         loss = calc_loss(batch)
-        print(loss)
-        break
+        loss.backward()
+        optimizer.step()
+        f_loss = loss.data.cpu().numpy()[0]
+        batch = []
+
+        iter_idx += 1
+        losses.append(f_loss)
+        rewards.extend(exp_source.pop_total_rewards())
+        losses = losses[-10:]
+        rewards = rewards[-10:]
+
+        print("%d: mean_loss=%.3f, mean_reward=%.3f" % (iter_idx, np.mean(losses), np.mean(rewards)))
