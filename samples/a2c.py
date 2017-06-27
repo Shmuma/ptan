@@ -13,6 +13,8 @@ from ptan.common import runfile, env_params
 
 import gym
 
+from bokeh.plotting import figure, output_file, show
+
 GAMMA = 0.99
 
 
@@ -102,6 +104,11 @@ if __name__ == "__main__":
     rewards = []
     iter_idx = 0
 
+    graph_data = {
+        'full_loss': [],
+        'rewards': [],
+    }
+
     for exp in exp_source:
         batch.append(exp)
         if len(batch) < run.getint("learning", "batch_size"):
@@ -117,8 +124,21 @@ if __name__ == "__main__":
 
         iter_idx += 1
         losses.append(f_loss)
-        rewards.extend(exp_source.pop_total_rewards())
+        new_rewards = exp_source.pop_total_rewards()
+        rewards.extend(new_rewards)
         losses = losses[-10:]
         rewards = rewards[-10:]
 
         print("%d: mean_loss=%.3f, mean_reward=%.3f" % (iter_idx, np.mean(losses), np.mean(rewards)))
+        graph_data['full_loss'].append(f_loss)
+        graph_data['rewards'].extend(new_rewards)
+
+        if np.mean(rewards) > 300:
+            break
+
+    # plot charts
+    output_file("a2c.html")
+
+    f = figure(title="Full loss")
+    f.line(range(iter_idx), graph_data['full_loss'])
+    show(f)
