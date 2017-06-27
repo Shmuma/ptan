@@ -94,7 +94,7 @@ if __name__ == "__main__":
         for exps in batch:
             v = Variable(torch.from_numpy(np.array([exps[0].state, exps[-1].state], dtype=np.float32)))
             policy_s, value_s = model(v)
-            t_policy_s = policy_s[0]
+            t_policy_s = policy_s[0] + 1e-6     # prevent log(0)
             t_value_s = value_s[0]
             t_value_last_s = value_s[1]
             R = 0.0 if exps[-1].done else t_value_last_s.data.cpu().numpy()[0]
