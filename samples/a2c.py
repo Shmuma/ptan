@@ -161,15 +161,17 @@ if __name__ == "__main__":
         losses = losses[-10:]
         rewards = rewards[-mean_games:]
 
-        print("%d: mean_loss=%.3f, mean_reward=%.3f, done_games=%d" % (
+        print("%d: mean_loss=%.3f, mean_reward=%.3f, done_games=%d, last_10_rewards=%s" % (
             iter_idx, 0.0 if not losses else np.mean(losses),
-            0.0 if not rewards else np.mean(rewards), len(new_rewards)))
+            0.0 if not rewards else np.mean(rewards), len(new_rewards),
+            ", ".join(map(str, rewards[-10:]))
+        ))
         graph_data['full_loss'].append(f_loss)
         graph_data['rewards'].extend(new_rewards)
         for k, v in monitor.items():
             graph_data[k].append(v)
 
-        if np.mean(rewards) > mean_reward:
+        if rewards and np.mean(rewards) > mean_reward:
             break
 
     # plot charts
