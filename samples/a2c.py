@@ -187,10 +187,9 @@ if __name__ == "__main__":
             losses = losses[-10:]
             rewards = rewards[-mean_games_bound:]
 
-            log.info("%d: mean_loss=%.3f, mean_reward=%.3f, done_games=%d, last_10_rewards=%s",
+            log.info("%d: mean_loss=%.3f, mean_reward=%.3f, done_games=%d",
                      iter_idx, 0.0 if not losses else np.mean(losses),
-                     0.0 if not rewards else np.mean(rewards), len(new_rewards),
-                     ", ".join(map(str, rewards[-10:])))
+                     0.0 if not rewards else np.mean(rewards), len(new_rewards))
             graph_data['full_loss'].append(f_loss)
             graph_data['rewards'].extend(new_rewards)
             for k, v in monitor.items():
