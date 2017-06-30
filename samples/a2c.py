@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import logging
 import argparse
 import numpy as np
 
@@ -16,6 +17,12 @@ import gym
 import bokeh
 from bokeh.plotting import figure
 from bokeh.io import output_file, show
+
+
+log = logging.getLogger()
+log.setLevel(logging.INFO)
+
+
 
 GAMMA = 0.99
 
@@ -93,13 +100,11 @@ if __name__ == "__main__":
         model.cuda()
 
     agent = ptan.agent.PolicyAgent(a3c_actor_wrapper(model))
-    exp_source = ptan.experience.ExperienceSource(env=env, agent=agent, steps_count=run.getint("defaults", "n_steps"))
+    exp_source = ptan.experience.ExperienceSource(env=env, agent=agent, steps_count=run.getint("learning", "n_steps"))
 
     optimizer = optim.RMSprop(model.parameters(), lr=run.getfloat("learning", "lr"))
 
     batch = []
-
-    entropy_beta = run.getfloat("defaults", "entropy_beta", fallback=0.0)
 
     def calc_loss(batch):
         """
@@ -115,6 +120,8 @@ if __name__ == "__main__":
         mon_val_loss = []
         mon_pol_loss = []
         mon_ent_loss = []
+
+        entropy_beta = run.getfloat("learning", "entropy_beta", fallback=0.0)
 
         for exps in batch:
             v = Variable(torch.from_numpy(np.array([exps[0].state, exps[-1].state], dtype=np.float32)))
@@ -159,8 +166,6 @@ if __name__ == "__main__":
     mean_games_bound = run.getint("stop", "mean_games")
     mean_reward_bound = run.getfloat("stop", "mean_reward")
 
-    decimate_params_after_score = run.getint("learning", "decimate_params_after_score", fallback=None)
-
     try:
         for exp in exp_source:
             batch.append(exp)
@@ -182,11 +187,10 @@ if __name__ == "__main__":
             losses = losses[-10:]
             rewards = rewards[-mean_games_bound:]
 
-            print("%d: mean_loss=%.3f, mean_reward=%.3f, done_games=%d, last_10_rewards=%s" % (
-                iter_idx, 0.0 if not losses else np.mean(losses),
-                0.0 if not rewards else np.mean(rewards), len(new_rewards),
-                ", ".join(map(str, rewards[-10:]))
-            ))
+            log.info("%d: mean_loss=%.3f, mean_reward=%.3f, done_games=%d, last_10_rewards=%s",
+                     iter_idx, 0.0 if not losses else np.mean(losses),
+                     0.0 if not rewards else np.mean(rewards), len(new_rewards),
+                     ", ".join(map(str, rewards[-10:])))
             graph_data['full_loss'].append(f_loss)
             graph_data['rewards'].extend(new_rewards)
             for k, v in monitor.items():
@@ -195,13 +199,12 @@ if __name__ == "__main__":
             mean_rewards = np.mean(rewards)
             if rewards and mean_rewards > mean_reward_bound:
                 break
-            # if we've reached bound, decimate relevant params and continue
-            if decimate_params_after_score is not None:
-                if mean_rewards > decimate_params_after_score:
-                    optimizer = optim.RMSprop(model.parameters(), lr=run.getfloat("learning", "lr")*0.1)
-                    entropy_beta *= 0.1
-                    print("LR and beta decimated as score crossed the bound")
-                    decimate_params_after_score = None
+            updated_options = run.check_and_reload()
+            if updated_options:
+                if ('learning', 'lr') in updated_options:
+                    lr = run.getfloat("learning", "lr")
+                    optimizer = optim.RMSprop(model.parameters(), lr=lr)
+                    log.info("LR updated to %s", lr)
     finally:
         if args.plot:
             plot_charts(titles=GRAPH_TITLES, data=graph_data, page_name=args.plot)
