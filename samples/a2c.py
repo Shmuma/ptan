@@ -159,7 +159,7 @@ if __name__ == "__main__":
     mean_games_bound = run.getint("stop", "mean_games")
     mean_reward_bound = run.getfloat("stop", "mean_reward")
 
-    decimate_lr_after_score = run.getint("learning", "decimate_lr_after_score", fallback=None)
+    decimate_params_after_score = run.getint("learning", "decimate_params_after_score", fallback=None)
 
     try:
         for exp in exp_source:
@@ -195,12 +195,13 @@ if __name__ == "__main__":
             mean_rewards = np.mean(rewards)
             if rewards and mean_rewards > mean_reward_bound:
                 break
-            # if we've reached bound, decimate LR and continue
-            if decimate_lr_after_score is not None:
-                if mean_rewards > decimate_lr_after_score:
+            # if we've reached bound, decimate relevant params and continue
+            if decimate_params_after_score is not None:
+                if mean_rewards > decimate_params_after_score:
                     optimizer = optim.RMSprop(model.parameters(), lr=run.getfloat("learning", "lr")*0.1)
-                    print("LR decimated as score crossed the bound")
-                    decimate_lr_after_score = None
+                    entropy_beta *= 0.1
+                    print("LR and beta decimated as score crossed the bound")
+                    decimate_params_after_score = None
     finally:
         if args.plot:
             plot_charts(titles=GRAPH_TITLES, data=graph_data, page_name=args.plot)
