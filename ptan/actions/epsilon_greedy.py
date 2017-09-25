@@ -13,7 +13,7 @@ class ActionSelectorEpsilonGreedy(nn.Module):
 
     def forward(self, q_vals):
         batch_size = q_vals.size()[0]
-        res = q_vals.max(dim=1)[1]
+        res = q_vals.max(dim=1, keepdim=True)[1]
         for i in range(batch_size):
             if np.random.rand() < self.epsilon:
                 res[i] = np.random.choice(self.params.n_actions)
