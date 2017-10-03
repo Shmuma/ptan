@@ -29,3 +29,11 @@ def register(params):
 
 def get():
     return _current_env_params
+
+
+def init(env, cuda_enabled):
+    assert isinstance(env, gym.Env)
+    assert isinstance(cuda_enabled, bool)
+    params = EnvParams.from_env(env)
+    params.cuda_enabled = cuda_enabled
+    register(params)
