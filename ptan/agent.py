@@ -33,21 +33,23 @@ class BaseAgent:
         raise NotImplementedError
 
 
-class DQNAgent:
+class DQNAgent(BaseAgent):
     """
-    DQNAgent calculates Q values from states and converts them into the actions using action_selector
+    DQNAgent is a memoryless DQN agent which calculates Q values 
+    from the observations and  converts them into the actions using action_selector
     """
     def __init__(self, dqn_model, action_selector):
         self.dqn_model = dqn_model
         self.action_selector = action_selector
 
-    def __call__(self, states):
-        v = Variable(torch.from_numpy(np.array(states, dtype=np.float32)))
+    def __call__(self, observations, states):
+        v = Variable(torch.FloatTensor(observations))
         if env_params.get().cuda_enabled:
             v = v.cuda()
-        q = self.dqn_model(v)
+        q_v = self.dqn_model(v)
+        q = q_v.data.cpu().numpy()
         actions = self.action_selector(q)
-        return actions.data.cpu().numpy()
+        return actions, states
 
 
 class TargetNet:
