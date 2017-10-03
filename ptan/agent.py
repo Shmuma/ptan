@@ -1,5 +1,5 @@
 """
-Agent is something which converts states into actions
+Agent is something which converts states into actions and has state
 """
 from .common import env_params
 
@@ -7,6 +7,30 @@ import copy
 import numpy as np
 import torch
 from torch.autograd import Variable
+
+class BaseAgent:
+    """
+    Abstract Agent interface
+    """
+    def initial_state(self):
+        """
+        Should create initial empty state for the agent. It will be called for the start of the episode
+        :return: Anything agent want to remember
+        """
+        return None
+
+    def __call__(self, observations, states):
+        """
+        Convert observations and states into actions to take
+        :param observations: list of observations to process 
+        :param states: list of states with the same length as observations 
+        :return: tuple of actions, states 
+        """
+        assert isinstance(observations, list)
+        assert isinstance(states, list)
+        assert len(observations) == len(states)
+
+        raise NotImplementedError
 
 
 class DQNAgent:
