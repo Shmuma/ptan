@@ -1,11 +1,12 @@
+import gym
 import torch
 from torch.autograd import Variable
 
 import numpy as np
 
-from collections import namedtuple, deque, OrderedDict
+from collections import namedtuple, deque
 
-from .common import env_params
+from .agent import BaseAgent
 
 # one single experience step
 Experience = namedtuple('Experience', ['state', 'action', 'reward', 'done'])
@@ -24,6 +25,10 @@ class ExperienceSource:
         :param agent: callable to convert batch of states into actions to take
         :param steps_count: count of steps to track for every experience chain
         """
+        assert isinstance(env, (gym.Env, list, tuple))
+        assert isinstance(agent, BaseAgent)
+        assert isinstance(steps_count, int)
+        assert steps_count >= 1
         if isinstance(env, (list, tuple)):
             self.pool = env
         else:
@@ -31,6 +36,7 @@ class ExperienceSource:
         self.agent = agent
         self.steps_count = steps_count
         self.total_rewards = []
+        self.agent_states = [agent.initial_state() for _ in self.pool]
 
     def __iter__(self):
         states, histories, cur_rewards = [], [], []
@@ -40,7 +46,7 @@ class ExperienceSource:
             cur_rewards.append(0.0)
 
         while True:
-            actions = self.agent(np.array(states))
+            actions, self.agent_states = self.agent(np.array(states), self.agent_states)
 
             for idx, env in enumerate(self.pool):
                 state = states[idx]
@@ -49,13 +55,13 @@ class ExperienceSource:
                 next_state, r, is_done, _ = env.step(action)
                 cur_rewards[idx] += r
                 history.append(Experience(state=state, action=action, reward=r, done=is_done))
-                while len(history) > self.steps_count+1:
+                while len(history) > self.steps_count:
                     history.popleft()
-                if len(history) == self.steps_count+1:
+                if len(history) == self.steps_count:
                     yield tuple(history)
                 states[idx] = next_state
                 if is_done:
-                    if len(history) > self.steps_count+1:
+                    if len(history) > self.steps_count:
                         history.popleft()
                     # generate tail of history
                     while len(history) >= 1:
@@ -64,6 +70,7 @@ class ExperienceSource:
                     self.total_rewards.append(cur_rewards[idx])
                     cur_rewards[idx] = 0.0
                     states[idx] = env.reset()
+                    self.agent_states[idx] = self.agent.initial_state()
                     history.clear()
 
     def pop_total_rewards(self):
@@ -211,12 +218,13 @@ class QLearningPreprocessor(BatchPreprocessor):
     
     To use different modes, use appropriate class method
     """
-    def __init__(self, model, target_model, use_double_dqn=False, batch_td_error_hook=None, gamma=0.99):
+    def __init__(self, model, target_model, use_double_dqn=False, batch_td_error_hook=None, gamma=0.99, cuda=False):
         self.model = model
         self.target_model = target_model
         self.use_double_dqn = use_double_dqn
         self.batch_dt_error_hook = batch_td_error_hook
         self.gamma = gamma
+        self.cuda = cuda
 
     @staticmethod
     def simple_dqn(model, **kwargs):
@@ -242,7 +250,7 @@ class QLearningPreprocessor(BatchPreprocessor):
         if self.target_model is None or self.use_double_dqn:
             states_t = torch.from_numpy(np.concatenate((states_first, states_last), axis=0))
             states_v = Variable(states_t)
-            if env_params.get().cuda_enabled:
+            if self.cuda:
                 states_v = states_v.cuda()
             res_both = self.model(states_v).data.cpu().numpy()
             return res_both[:len(states_first)], res_both[len(states_first):]
@@ -251,7 +259,7 @@ class QLearningPreprocessor(BatchPreprocessor):
         # so, we should calculate first_q and last_q using different models
         states_first_v = Variable(torch.from_numpy(states_first))
         states_last_v = Variable(torch.from_numpy(states_last))
-        if env_params.get().cuda_enabled:
+        if self.cuda:
             states_first_v = states_first_v.cuda()
             states_last_v = states_last_v.cuda()
         q_first = self.model(states_first_v).data
@@ -276,7 +284,7 @@ class QLearningPreprocessor(BatchPreprocessor):
         actions = q_last.argmax(axis=1)
         # calculate Q values using target net
         states_last_v = Variable(torch.from_numpy(states_last))
-        if env_params.get().cuda_enabled:
+        if self.cuda:
             states_last_v = states_last_v.cuda()
         q_last_target = self.target_model(states_last_v).data.cpu().numpy()
         return q_last_target[range(q_last_target.shape[0]), actions]
