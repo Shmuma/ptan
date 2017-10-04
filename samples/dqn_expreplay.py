@@ -2,9 +2,9 @@
 import argparse
 import numpy as np
 
-from ptan.common import env_params, runfile, utils
-from ptan.actions.epsilon_greedy import ActionSelectorEpsilonGreedy
-from ptan import experience
+from ptan.common import runfile, utils
+from ptan.actions import EpsilonGreedyActionSelector
+import ptan
 
 import torch
 import torch.nn as nn
@@ -29,15 +29,12 @@ if __name__ == "__main__":
     if args.monitor:
         env = gym.wrappers.Monitor(env, args.monitor)
 
-    params = env_params.EnvParams.from_env(env)
-    env_params.register(params)
-
     model = nn.Sequential(
-        nn.Linear(params.state_shape[0], 50),
+        nn.Linear(env.observation_space.shape[0], 50),
         nn.ReLU(),
         # nn.Linear(100, 100),
         # nn.ReLU(),
-        nn.Linear(50, params.n_actions)
+        nn.Linear(50, env.action_space.n)
     )
     if cuda_enabled:
         model.cuda()
@@ -45,24 +42,11 @@ if __name__ == "__main__":
     loss_fn = nn.MSELoss(size_average=False)
     optimizer = optim.Adam(model.parameters(), lr=run.getfloat("learning", "lr"))
 
-    action_selector = ActionSelectorEpsilonGreedy(epsilon=run.getfloat("defaults", "epsilon"), params=params)
+    action_selector = EpsilonGreedyActionSelector(epsilon=run.getfloat("defaults", "epsilon"))
+    agent = ptan.agent.DQNAgent(model, action_selector, cuda=cuda_enabled)
 
-    def agent(states):
-        """
-        Return actions to take by a batch of states
-        :param states: numpy array with states 
-        :return: 
-        """
-        # TODO: move this into separate class
-        v = Variable(torch.from_numpy(np.array(states, dtype=np.float32)))
-        if cuda_enabled:
-            v = v.cuda()
-        q = model(v)
-        actions = action_selector(q)
-        return actions.data.cpu().numpy()
-
-    exp_source = experience.ExperienceSource(env=env, agent=agent, steps_count=run.getint("defaults", "n_steps"))
-    exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
+    exp_source = ptan.experience.ExperienceSource(env=env, agent=agent, steps_count=run.getint("defaults", "n_steps"))
+    exp_replay = ptan.experience.ExperienceReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
 
     def batch_to_train(batch):
         """

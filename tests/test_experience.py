@@ -7,7 +7,7 @@ from ptan import experience, agent
 
 class DummyAgent(agent.BaseAgent):
     def __call__(self, states, agent_states):
-        return np.zeros(shape=(states.shape[0], 1), dtype=np.int32), agent_states
+        return np.zeros(shape=(states.shape[0], ), dtype=np.int32), agent_states
 
 
 class TestExperienceSourceSingleEnv(TestCase):
@@ -63,7 +63,7 @@ class StatefulAgent(agent.BaseAgent):
 
     def __call__(self, states, agent_states):
         new_agent_states = [n+1 for n in agent_states]
-        actions = [[n % self.action_space.n] for n in new_agent_states]
+        actions = [n % self.action_space.n for n in new_agent_states]
         return np.array(actions, dtype=np.int32), new_agent_states
 
 

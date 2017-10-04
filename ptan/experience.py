@@ -50,7 +50,7 @@ class ExperienceSource:
 
             for idx, env in enumerate(self.pool):
                 state = states[idx]
-                action = actions[idx][0]
+                action = actions[idx]
                 history = histories[idx]
                 next_state, r, is_done, _ = env.step(action)
                 cur_rewards[idx] += r
