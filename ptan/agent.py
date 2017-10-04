@@ -65,7 +65,7 @@ class TargetNet:
         self.target_model.load_state_dict(self.model.state_dict())
 
 
-class PolicyAgent:
+class PolicyAgent(BaseAgent):
     """
     Policy agent gets action probabilities from the model and samples actions from it
     """
@@ -74,7 +74,7 @@ class PolicyAgent:
         self.cuda = cuda
         self.apply_softmax = apply_softmax
 
-    def __call__(self, states):
+    def __call__(self, states, agent_states):
         """
         Return actions from given list of states
         :param states: list of states
@@ -90,5 +90,5 @@ class PolicyAgent:
         actions = []
         for prob in probs:
             actions.append([np.random.choice(len(prob), p=prob)])
-        return np.array(actions)
+        return np.array(actions), agent_states
 
