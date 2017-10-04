@@ -8,7 +8,7 @@ import torch.optim as optim
 from torch.autograd import Variable
 
 import ptan
-from ptan.common import runfile, env_params
+from ptan.common import runfile
 
 import gym
 
@@ -28,22 +28,19 @@ if __name__ == "__main__":
     if args.monitor:
         env = gym.wrappers.Monitor(env, args.monitor)
 
-    params = env_params.EnvParams.from_env(env)
-    env_params.register(params)
-
     # model returns probability of actions
     model = nn.Sequential(
-        nn.Linear(params.state_shape[0], 50),
+        nn.Linear(env.observation_space.shape[0], 50),
         nn.ReLU(),
         # nn.Linear(100, 50),
         # nn.ReLU(),
-        nn.Linear(50, params.n_actions),
+        nn.Linear(50, env.action_space.n),
         nn.Softmax()
     )
     if cuda_enabled:
         model.cuda()
 
-    agent = ptan.agent.PolicyAgent(model)
+    agent = ptan.agent.PolicyAgent(model, cuda=cuda_enabled)
     exp_source = ptan.experience.ExperienceSource(env=env, agent=agent, steps_count=run.getint("defaults", "n_steps"))
     exp_buffer = ptan.experience.ExperienceReplayBuffer(exp_source, run.getint("exp_buffer", "size"))
 

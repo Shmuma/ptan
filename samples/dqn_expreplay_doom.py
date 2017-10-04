@@ -14,13 +14,14 @@ import gym
 from gym.wrappers import SkipWrapper
 from ppaquette_gym_doom.wrappers.action_space import ToDiscrete
 
-from ptan.common import runfile, env_params, utils, wrappers
-from ptan.actions.epsilon_greedy import ActionSelectorEpsilonGreedy
+from ptan.common import runfile, utils, wrappers
 from ptan import experience, agent
+import ptan
 
 GAMMA = 0.99
 
 REPORT_ITERS = 10
+
 
 class Net(nn.Module):
     def __init__(self, n_actions, input_shape=(1, 80, 80)):
@@ -79,19 +80,17 @@ if __name__ == "__main__":
     for i in range(run.getint("defaults", "env_pool_size", fallback=1)-1):
         env_pool.append(make_env())
 
-    params = env_params.EnvParams.from_env(env)
-    params.load_runfile(run)
-    env_params.register(params)
+    cuda_enabled = run.getboolean("defaults", "cuda")
 
-    model = Net(params.n_actions)
-    if params.cuda_enabled:
+    model = Net(env.action_space.n)
+    if cuda_enabled:
         model.cuda()
 
     loss_fn = nn.MSELoss(size_average=False)
     optimizer = optim.Adam(model.parameters(), lr=run.getfloat("learning", "lr"))
 
-    action_selector = ActionSelectorEpsilonGreedy(epsilon=run.getfloat("defaults", "epsilon"), params=params)
-    dqn_agent = agent.DQNAgent(dqn_model=model, action_selector=action_selector)
+    action_selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=run.getfloat("defaults", "epsilon"))
+    dqn_agent = agent.DQNAgent(dqn_model=model, action_selector=action_selector, cuda=cuda_enabled)
     exp_source = experience.ExperienceSource(env=env_pool, agent=dqn_agent, steps_count=run.getint("defaults", "n_steps"))
     exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
 
@@ -107,7 +106,7 @@ if __name__ == "__main__":
             # calculate q_values for first and last state in experience sequence
             # first is needed for reference, last is used to approximate rest value
             v = Variable(torch.from_numpy(np.array([exps[0].state, exps[-1].state], dtype=np.float32)))
-            if params.cuda_enabled:
+            if cuda_enabled:
                 v = v.cuda()
             q = model(v)
             # accumulate total reward for the chain
@@ -135,7 +134,7 @@ if __name__ == "__main__":
             states, q_vals = batch_to_train(batch)
             # ready to train
             states, q_vals = Variable(states), Variable(q_vals)
-            if params.cuda_enabled:
+            if cuda_enabled:
                 states = states.cuda()
                 q_vals = q_vals.cuda()
             l = loss_fn(model(states), q_vals)

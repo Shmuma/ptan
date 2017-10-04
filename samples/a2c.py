@@ -10,7 +10,7 @@ import torch.optim as optim
 from torch.autograd import Variable
 
 import ptan
-from ptan.common import runfile, env_params
+from ptan.common import runfile
 
 import gym
 
@@ -91,15 +91,12 @@ if __name__ == "__main__":
     if args.monitor:
         env = gym.wrappers.Monitor(env, args.monitor)
 
-    params = env_params.EnvParams.from_env(env)
-    env_params.register(params)
-
     # model returns probability of actions
-    model = Model(params.n_actions, params.state_shape[0])
+    model = Model(env.action_space.n, env.observation_space.shape[0])
     if cuda_enabled:
         model.cuda()
 
-    agent = ptan.agent.PolicyAgent(a3c_actor_wrapper(model))
+    agent = ptan.agent.PolicyAgent(a3c_actor_wrapper(model), cuda=cuda_enabled)
     exp_source = ptan.experience.ExperienceSource(env=env, agent=agent, steps_count=run.getint("learning", "n_steps"))
 
     optimizer = optim.RMSprop(model.parameters(), lr=run.getfloat("learning", "lr"))
