@@ -6,11 +6,24 @@ from gym.core import ObservationWrapper,Wrapper
 from gym.spaces.box import Box
 
 
+class AtariWrapper(ObservationWrapper):
+    """
+    Performs essential atari transformations: values normalization and color plane reorder
+    """
+    def __init__(self, env):
+        super(AtariWrapper, self).__init__(env)
+        self.observation_space = Box(0.0, 1.0, self._observation(env.observation_space.low).shape)
+
+    def _observation(self, img):
+        img = np.moveaxis(img, 2, 0)
+        return img.astype(np.float32) / 255.
+
+
 class PreprocessImage(ObservationWrapper):
+    """A gym wrapper that crops, scales image into the desired shapes and optionally grayscales it."""
     def __init__(self, env, height=64, width=64, grayscale=True,
                  crop=lambda img: img):
-        """A gym wrapper that crops, scales image into the desired shapes and optionally grayscales it."""
-        super(PreprocessImage, self).__init__(env)
+        super(PreprocessImage, self).__init__(AtariWrapper(env))
         self.img_size = (height, width)
         self.grayscale = grayscale
         self.crop = crop
@@ -19,13 +32,10 @@ class PreprocessImage(ObservationWrapper):
         self.observation_space = Box(0.0, 1.0, [n_colors, height, width])
 
     def _observation(self, img):
-        """what happens to the observation"""
         img = self.crop(img)
         img = imresize(img, self.img_size)
         if self.grayscale:
             img = img.mean(-1, keepdims=True)
-        img = np.transpose(img, (2, 0, 1))  # reshape from (h,w,colors) to (colors,h,w)
-        img = img.astype('float32') / 255.
         return img
 
 

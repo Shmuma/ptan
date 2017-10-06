@@ -31,3 +31,15 @@ class EpsilonGreedyActionSelector(ActionSelector):
         rand_actions = np.random.choice(n_actions, sum(mask))
         actions[mask] = rand_actions
         return actions
+
+
+class ProbabilityActionSelector(ActionSelector):
+    """
+    Converts probabilities of actions into action by sampling them
+    """
+    def __call__(self, probs):
+        assert isinstance(probs, np.ndarray)
+        actions = []
+        for prob in probs:
+            actions.append(np.random.choice(len(prob), p=prob))
+        return np.array(actions)
