@@ -18,12 +18,13 @@ class ExperienceSource:
     
     Every experience contains n+1 list of Experience entries
     """
-    def __init__(self, env, agent, steps_count=1):
+    def __init__(self, env, agent, steps_count=1, steps_delta=1):
         """
         Create simple experience source
         :param env: environment or list of environments to be used
         :param agent: callable to convert batch of states into actions to take
         :param steps_count: count of steps to track for every experience chain
+        :param steps_delta: how many steps to do between experience items
         """
         assert isinstance(env, (gym.Env, list, tuple))
         assert isinstance(agent, BaseAgent)
@@ -35,6 +36,7 @@ class ExperienceSource:
             self.pool = [env]
         self.agent = agent
         self.steps_count = steps_count
+        self.steps_delta = steps_delta
         self.total_rewards = []
         self.agent_states = [agent.initial_state() for _ in self.pool]
 
@@ -45,6 +47,7 @@ class ExperienceSource:
             histories.append(deque())
             cur_rewards.append(0.0)
 
+        iter_idx = 0
         while True:
             actions, self.agent_states = self.agent(np.array(states), self.agent_states)
 
@@ -57,7 +60,7 @@ class ExperienceSource:
                 history.append(Experience(state=state, action=action, reward=r, done=is_done))
                 while len(history) > self.steps_count:
                     history.popleft()
-                if len(history) == self.steps_count:
+                if len(history) == self.steps_count and iter_idx % self.steps_delta == 0:
                     yield tuple(history)
                 states[idx] = next_state
                 if is_done:
@@ -72,6 +75,7 @@ class ExperienceSource:
                     states[idx] = env.reset()
                     self.agent_states[idx] = self.agent.initial_state()
                     history.clear()
+            iter_idx += 1
 
     def pop_total_rewards(self):
         r = self.total_rewards
