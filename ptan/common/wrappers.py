@@ -23,7 +23,7 @@ class PreprocessImage(ObservationWrapper):
     """A gym wrapper that crops, scales image into the desired shapes and optionally grayscales it."""
     def __init__(self, env, height=64, width=64, grayscale=True,
                  crop=lambda img: img):
-        super(PreprocessImage, self).__init__(AtariWrapper(env))
+        super(PreprocessImage, self).__init__(env)
         self.img_size = (height, width)
         self.grayscale = grayscale
         self.crop = crop
@@ -36,7 +36,8 @@ class PreprocessImage(ObservationWrapper):
         img = imresize(img, self.img_size)
         if self.grayscale:
             img = img.mean(-1, keepdims=True)
-        return img
+        img = np.moveaxis(img, 2, 0)
+        return img.astype(np.float32) / 255.
 
 
 class FrameBuffer(ObservationWrapper):

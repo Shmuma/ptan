@@ -89,6 +89,6 @@ class PolicyAgent(BaseAgent):
         probs = probs_v.data.cpu().numpy()
         actions = []
         for prob in probs:
-            actions.append([np.random.choice(len(prob), p=prob)])
+            actions.append(np.random.choice(len(prob), p=prob))
         return np.array(actions), agent_states
 
