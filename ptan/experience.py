@@ -1,5 +1,6 @@
 import gym
 import torch
+import random
 from torch.autograd import Variable
 
 import numpy as np
@@ -16,7 +17,7 @@ class ExperienceSource:
     """
     Simple n-step experience source using single or multiple environments
     
-    Every experience contains n+1 list of Experience entries
+    Every experience contains n list of Experience entries
     """
     def __init__(self, env, agent, steps_count=1, steps_delta=1):
         """
@@ -81,6 +82,30 @@ class ExperienceSource:
         r = self.total_rewards
         self.total_rewards = []
         return r
+
+
+class ExperienceSourceBuffer:
+    """
+    The same as ExperienceSource, but takes episodes from the buffer
+    """
+    def __init__(self, buffer, steps_count=1):
+        """
+        Create buffered experience source
+        :param buffer: list of episodes, each is a list of Experience object 
+        :param steps_count: count of steps in every entry 
+        """
+        self.buffer = buffer
+        self.lens = list(map(len, buffer))
+        self.steps_count = steps_count
+
+    def __iter__(self):
+        """
+        Infinitely sample episode from the buffer and then sample item offset
+        """
+        while True:
+            episode = random.randrange(len(self.buffer))
+            ofs = random.randrange(self.lens[episode] - self.steps_count - 1)
+            yield self.buffer[episode][ofs:ofs+self.steps_count]
 
 
 class ExperienceReplayBuffer:
