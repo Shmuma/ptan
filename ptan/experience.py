@@ -94,9 +94,12 @@ class ExperienceSourceBuffer:
         :param buffer: list of episodes, each is a list of Experience object 
         :param steps_count: count of steps in every entry 
         """
+        self.update_buffer(buffer)
+        self.steps_count = steps_count
+
+    def update_buffer(self, buffer):
         self.buffer = buffer
         self.lens = list(map(len, buffer))
-        self.steps_count = steps_count
 
     def __iter__(self):
         """
