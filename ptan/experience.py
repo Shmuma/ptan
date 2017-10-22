@@ -1,6 +1,7 @@
 import gym
 import torch
 import random
+import itertools
 from torch.autograd import Variable
 
 import numpy as np
@@ -113,10 +114,9 @@ class ExperienceSourceBuffer:
 
 class ExperienceReplayBuffer:
     def __init__(self, experience_source, buffer_size=None):
-        self.buffer_size = buffer_size
         self.experience_source = experience_source
         self.experience_source_iter = iter(experience_source)
-        self.buffer = deque()
+        self.buffer = deque(maxlen=buffer_size)
 
     def __len__(self):
         return len(self.buffer)
@@ -132,7 +132,7 @@ class ExperienceReplayBuffer:
         :return: 
         """
         if len(self.buffer) <= batch_size:
-            return list(self.buffer)
+            return self.buffer
         keys = np.random.choice(range(len(self.buffer)), batch_size, replace=False)
         return [self.buffer[key] for key in keys]
 
@@ -142,10 +142,9 @@ class ExperienceReplayBuffer:
         :param batch_size: 
         """
         ofs = 0
-        vals = list(self.buffer)
-        np.random.shuffle(vals)
         while (ofs+1)*batch_size <= len(self.buffer):
-            yield vals[ofs*batch_size:(ofs+1)*batch_size]
+            res = itertools.islice(self.buffer, ofs*batch_size, (ofs+1)*batch_size)
+            yield list(res)
             ofs += 1
 
     def populate(self, samples):
@@ -153,13 +152,9 @@ class ExperienceReplayBuffer:
         Populates samples into the buffer
         :param samples: how many samples to populate
         """
-        while samples > 0:
+        for _ in range(samples):
             entry = next(self.experience_source_iter)
             self.buffer.append(entry)
-            samples -= 1
-        if self.buffer_size is not None:
-            while len(self.buffer) > self.buffer_size:
-                self.buffer.popleft()
 
 
 class PrioritizedReplayBuffer:
