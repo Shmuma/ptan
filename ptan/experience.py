@@ -81,6 +81,39 @@ class ExperienceSource:
         return r
 
 
+# those entries are emitted from ExperienceSourceFirstLast. Reward is discounted over the trajectory piece
+ExperienceFirstLast = collections.namedtuple('ExperienceFirstLast', ('state', 'action', 'reward', 'last_state'))
+
+
+class ExperienceSourceFirstLast(ExperienceSource):
+    """
+    This is a wrapper around ExperienceSource to prevent storing full trajectory in replay buffer when we need 
+    only first and last states. For every trajectory piece it calculates discounted reward and emits only first 
+    and last states and action taken in the first state.
+    
+    If we have partial trajectory at the end of episode, last_state will be None
+    """
+    def __init__(self, env, agent, gamma, steps_count=1, steps_delta=1):
+        assert isinstance(gamma, float)
+        super(ExperienceSourceFirstLast, self).__init__(env, agent, steps_count+1, steps_delta)
+        self.gamma = gamma
+
+    def __iter__(self):
+        for exp in super(ExperienceSourceFirstLast, self).__iter__():
+            if exp[-1].done:
+                last_state = None
+                elems = exp
+            else:
+                last_state = exp[-1].state
+                elems = exp[:-1]
+            total_reward = 0.0
+            for e in reversed(elems):
+                total_reward *= self.gamma
+                total_reward += e.reward
+            yield ExperienceFirstLast(state=exp[0].state, action=exp[0].action,
+                                      reward=total_reward, last_state=last_state)
+
+
 class ExperienceSourceBuffer:
     """
     The same as ExperienceSource, but takes episodes from the buffer
