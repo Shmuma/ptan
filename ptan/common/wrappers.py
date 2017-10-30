@@ -160,7 +160,7 @@ class LazyFrames(object):
         self._frames = frames
 
     def __array__(self, dtype=None):
-        out = np.concatenate(self._frames, axis=2)
+        out = np.concatenate(self._frames, axis=0)
         if dtype is not None:
             out = out.astype(dtype)
         return out
@@ -178,7 +178,7 @@ class FrameStack(gym.Wrapper):
         self.k = k
         self.frames = deque([], maxlen=k)
         shp = env.observation_space.shape
-        self.observation_space = spaces.Box(low=0, high=255, shape=(shp[0], shp[1], shp[2] * k))
+        self.observation_space = spaces.Box(low=0, high=255, shape=(shp[0]*k, shp[1], shp[2]))
 
     def _reset(self):
         ob = self.env.reset()
@@ -213,7 +213,7 @@ class ImageToPyTorch(gym.ObservationWrapper):
         self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(old_shape[-1], old_shape[0], old_shape[1]))
 
     def _observation(self, observation):
-        return np.moveaxis(observation, 2, 0)
+        return np.swapaxes(observation, 2, 0)
 
 
 def wrap_dqn(env):
@@ -225,7 +225,7 @@ def wrap_dqn(env):
     if 'FIRE' in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
     env = ProcessFrame84(env)
+    env = ImageToPyTorch(env)
     env = FrameStack(env, 4)
     env = ClippedRewardsWrapper(env)
-    env = ImageToPyTorch(env)
     return env
