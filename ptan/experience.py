@@ -46,7 +46,7 @@ class ExperienceSource:
         states, histories, cur_rewards = [], [], []
         for env in self.pool:
             states.append(env.reset())
-            histories.append(deque())
+            histories.append(deque(maxlen=self.steps_count))
             cur_rewards.append(0.0)
 
         iter_idx = 0
@@ -60,14 +60,10 @@ class ExperienceSource:
                 next_state, r, is_done, _ = env.step(action)
                 cur_rewards[idx] += r
                 history.append(Experience(state=state, action=action, reward=r, done=is_done))
-                while len(history) > self.steps_count:
-                    history.popleft()
                 if len(history) == self.steps_count and iter_idx % self.steps_delta == 0:
                     yield tuple(history)
                 states[idx] = next_state
                 if is_done:
-                    if len(history) > self.steps_count:
-                        history.popleft()
                     # generate tail of history
                     while len(history) >= 1:
                         yield tuple(history)
