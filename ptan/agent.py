@@ -33,18 +33,34 @@ class BaseAgent:
         raise NotImplementedError
 
 
+def default_states_preprocessor(states):
+    """
+    Convert list of states into numpy array
+    :param states: list of numpy arrays with states 
+    :return: numpy array with the states
+    """
+    if len(states) == 1:
+        np_states = np.expand_dims(states[0], 0)
+    else:
+        np_states = np.array(states)
+    return np_states
+
+
 class DQNAgent(BaseAgent):
     """
     DQNAgent is a memoryless DQN agent which calculates Q values 
     from the observations and  converts them into the actions using action_selector
     """
-    def __init__(self, dqn_model, action_selector, cuda=False):
+    def __init__(self, dqn_model, action_selector, cuda=False, preprocessor=default_states_preprocessor):
         self.dqn_model = dqn_model
         self.action_selector = action_selector
+        self.preprocessor = preprocessor
         self.cuda = cuda
 
     def __call__(self, states, agent_states):
-        v = Variable(torch.FloatTensor(states))
+        if self.preprocessor is not None:
+            states = self.preprocessor(states)
+        v = Variable(torch.from_numpy(states))
         if self.cuda:
             v = v.cuda()
         q_v = self.dqn_model(v)
@@ -82,10 +98,11 @@ class PolicyAgent(BaseAgent):
     """
     Policy agent gets action probabilities from the model and samples actions from it
     """
-    def __init__(self, model, cuda=False, apply_softmax=False):
+    def __init__(self, model, cuda=False, apply_softmax=False, preprocessor=default_states_preprocessor):
         self.model = model
         self.cuda = cuda
         self.apply_softmax = apply_softmax
+        self.preprocessor = preprocessor
 
     def __call__(self, states, agent_states):
         """
@@ -93,7 +110,9 @@ class PolicyAgent(BaseAgent):
         :param states: list of states
         :return: list of actions
         """
-        v = Variable(torch.from_numpy(np.array(states, dtype=np.float32)))
+        if self.preprocessor is not None:
+            states = self.preprocessor(states)
+        v = Variable(torch.from_numpy(states))
         if self.cuda:
             v = v.cuda()
         probs_v = self.model(v)

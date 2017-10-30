@@ -51,7 +51,7 @@ class ExperienceSource:
 
         iter_idx = 0
         while True:
-            actions, self.agent_states = self.agent(np.array(states), self.agent_states)
+            actions, self.agent_states = self.agent(states, self.agent_states)
 
             for idx, env in enumerate(self.pool):
                 state = states[idx]
