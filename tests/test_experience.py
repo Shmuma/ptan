@@ -117,21 +117,3 @@ class TestExperienceReplayBuffer(TestCase):
 
         b = buf.sample(20)
         self.assertEqual(10, len(b))
-
-    def test_batches(self):
-        buf = experience.ExperienceReplayBuffer(self.source)
-        buf.populate(10)
-
-        b = list(buf.batches(batch_size=2))
-        self.assertEqual(5, len(b))
-        self.assertEqual(2, len(b[0]))
-
-        buf.populate(1)
-        b = list(buf.batches(batch_size=2))
-        self.assertEqual(5, len(b))
-
-        buf.populate(1)
-        b = list(buf.batches(batch_size=2))
-        self.assertEqual(6, len(b))
-
-        pass

@@ -1,7 +1,7 @@
 import gym
 import torch
 import random
-import itertools
+import collections
 from torch.autograd import Variable
 
 import numpy as np
@@ -20,7 +20,7 @@ class ExperienceSource:
     
     Every experience contains n list of Experience entries
     """
-    def __init__(self, env, agent, steps_count=1, steps_delta=1):
+    def __init__(self, env, agent, steps_count=2, steps_delta=1):
         """
         Create simple experience source
         :param env: environment or list of environments to be used
@@ -110,7 +110,6 @@ class ExperienceSourceBuffer:
 
 class ExperienceReplayBuffer:
     def __init__(self, experience_source, buffer_size=None):
-        self.experience_source = experience_source
         self.experience_source_iter = iter(experience_source)
         self.buffer = deque(maxlen=buffer_size)
 
@@ -132,17 +131,6 @@ class ExperienceReplayBuffer:
         keys = np.random.choice(range(len(self.buffer)), batch_size, replace=False)
         return [self.buffer[key] for key in keys]
 
-    def batches(self, batch_size):
-        """
-        Iterate batches of given size once (i.e. one epoch over buffer)
-        :param batch_size: 
-        """
-        ofs = 0
-        while (ofs+1)*batch_size <= len(self.buffer):
-            res = itertools.islice(self.buffer, ofs*batch_size, (ofs+1)*batch_size)
-            yield list(res)
-            ofs += 1
-
     def populate(self, samples):
         """
         Populates samples into the buffer
@@ -153,76 +141,35 @@ class ExperienceReplayBuffer:
             self.buffer.append(entry)
 
 
-class PrioritizedReplayBuffer:
-    def __init__(self, experience_source, buffer_size, prob_alpha=1.0, weight_beta=1.0):
-        """
-        Construct prioritized replay buffer
-        :param experience_source: source of experience we're going to use 
-        :param buffer_size: max size of buffer 
-        :param prob_alpha: exponent for probabilities 
-        :param weight_beta: exponent for weights 
-        """
-        self.buffer_size = buffer_size
-        self.experience_source = experience_source
-        self.experience_source_iter = iter(experience_source)
+class PrioReplayBuffer:
+    def __init__(self, exp_source, buf_size, prob_alpha):
+        self.exp_source_iter = iter(exp_source)
         self.prob_alpha = prob_alpha
-        self.weight_beta = weight_beta
-        self.buffer = deque()
-        self.probs = deque()
+        self.buffer = collections.deque(maxlen=buf_size)
+        self.priorities = collections.deque(maxlen=buf_size)
 
     def __len__(self):
         return len(self.buffer)
 
-    def sample(self, batch_size):
-        """
-        Sample batch from experience replay, returning data, indices and sample weights.
-        
-        Indices should be passed for call update_priorities()
-        :param batch_size: 
-        :return: tuple of (batch_data, batch_indices, weights) 
-        """
-        indices = range(len(self.buffer))
-        batch_idx = np.random.choice(indices, batch_size, p=self.probs)
-        batch_dat = [self.buffer[idx] for idx in batch_idx]
-        weights = [(1. / (len(self.buffer) * self.probs[idx])) ** self.weight_beta for idx in batch_idx]
-
-        # normalize weights
-        max_w = max(weights)
-        res_weights = [w / max_w for w in weights]
-        return batch_dat, batch_idx, res_weights
-
     def populate(self, samples):
-        """
-        Fetch given amount of samples into the buffer
-        :param samples: 
-        """
-        max_prob = max(self.probs) if self.probs else 1.0
+        max_prio = max(self.priorities) if self.priorities else 1.0
+        for _ in range(samples):
+            self.buffer.append(next(self.exp_source_iter))
+            self.priorities.append(max_prio)
 
-        while samples > 0:
-            entry = next(self.experience_source_iter)
-            self.buffer.append(entry)
-            self.probs.append(max_prob)
-            samples -= 1
-        while len(self.buffer) > self.buffer_size:
-            self.buffer.popleft()
-            self.probs.popleft()
-        self._normalize_probs()
+    def sample(self, batch_size, beta):
+        probs = np.array(self.priorities, dtype=np.float32) ** self.prob_alpha
+        probs /= probs.sum()
+        indices = np.random.choice(len(self.buffer), batch_size, p=probs, replace=False)
+        samples = [self.buffer[idx] for idx in indices]
+        total = len(self.buffer)
+        weights = (total * probs[indices]) ** (-beta)
+        weights /= weights.max()
+        return samples, indices, weights
 
     def update_priorities(self, batch_indices, batch_priorities):
-        """
-        Update batch item priorities, should be called after TD error 
-        calculation to update probability of sampling.
-        :param batch_indices: indices returned by sample() call 
-        :param batch_priorities: list of numbers reflecting priorities 
-        """
-        for idx, priority in zip(batch_indices, batch_priorities):
-            self.probs[idx] = priority ** self.prob_alpha
-        self._normalize_probs()
-
-    def _normalize_probs(self):
-        s = sum(self.probs)
-        for idx, p in enumerate(self.probs):
-            self.probs[idx] = p / s
+        for idx, prio in zip(batch_indices, batch_priorities):
+            self.priorities[idx] = prio
 
 
 class BatchPreprocessor:
