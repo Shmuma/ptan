@@ -65,7 +65,7 @@ class ExperienceSource:
                 states[idx] = next_state
                 if is_done:
                     # generate tail of history
-                    while len(history) >= 1:
+                    while len(history) > 1:
                         yield tuple(history)
                         history.popleft()
                     self.total_rewards.append(cur_rewards[idx])
@@ -161,7 +161,7 @@ class ExperienceReplayBuffer:
         """
         if len(self.buffer) <= batch_size:
             return self.buffer
-        keys = np.random.choice(range(len(self.buffer)), batch_size, replace=False)
+        keys = np.random.choice(len(self.buffer), batch_size, replace=False)
         return [self.buffer[key] for key in keys]
 
     def populate(self, samples):
