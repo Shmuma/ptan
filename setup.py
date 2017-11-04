@@ -10,5 +10,5 @@ setuptools.setup(
     author_email="max.lapan@gmail.com",
     license='GPL-v3',
     description="PyTorch reinforcement learning framework",
-    version="0.1",
+    version="0.2",
 )
