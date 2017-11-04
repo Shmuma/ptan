@@ -46,6 +46,10 @@ def default_states_preprocessor(states):
     return np_states
 
 
+def float32_preprocessor(states):
+    return np.array(states, dtype=np.float32)
+
+
 class DQNAgent(BaseAgent):
     """
     DQNAgent is a memoryless DQN agent which calculates Q values 
