@@ -57,7 +57,9 @@ class DQNAgent(BaseAgent):
         self.preprocessor = preprocessor
         self.cuda = cuda
 
-    def __call__(self, states, agent_states):
+    def __call__(self, states, agent_states=None):
+        if agent_states is None:
+            agent_states = [None] * states.shape[0]
         if self.preprocessor is not None:
             states = self.preprocessor(states)
         v = Variable(torch.from_numpy(states))
@@ -104,12 +106,14 @@ class PolicyAgent(BaseAgent):
         self.apply_softmax = apply_softmax
         self.preprocessor = preprocessor
 
-    def __call__(self, states, agent_states):
+    def __call__(self, states, agent_states=None):
         """
         Return actions from given list of states
         :param states: list of states
         :return: list of actions
         """
+        if agent_states is None:
+            agent_states = [None] * states.shape[0]
         if self.preprocessor is not None:
             states = self.preprocessor(states)
         v = Variable(torch.from_numpy(states))
