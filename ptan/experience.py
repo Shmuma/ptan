@@ -161,7 +161,8 @@ class ExperienceReplayBuffer:
         """
         if len(self.buffer) <= batch_size:
             return self.buffer
-        keys = np.random.choice(len(self.buffer), batch_size, replace=False)
+        # Warning: replace=False makes random.choice O(n)
+        keys = np.random.choice(len(self.buffer), batch_size, replace=True)
         return [self.buffer[key] for key in keys]
 
     def populate(self, samples):
