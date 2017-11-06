@@ -17,7 +17,7 @@ Experience = namedtuple('Experience', ['state', 'action', 'reward', 'done'])
 class ExperienceSource:
     """
     Simple n-step experience source using single or multiple environments
-    
+
     Every experience contains n list of Experience entries
     """
     def __init__(self, env, agent, steps_count=2, steps_delta=1):
@@ -87,10 +87,10 @@ ExperienceFirstLast = collections.namedtuple('ExperienceFirstLast', ('state', 'a
 
 class ExperienceSourceFirstLast(ExperienceSource):
     """
-    This is a wrapper around ExperienceSource to prevent storing full trajectory in replay buffer when we need 
-    only first and last states. For every trajectory piece it calculates discounted reward and emits only first 
+    This is a wrapper around ExperienceSource to prevent storing full trajectory in replay buffer when we need
+    only first and last states. For every trajectory piece it calculates discounted reward and emits only first
     and last states and action taken in the first state.
-    
+
     If we have partial trajectory at the end of episode, last_state will be None
     """
     def __init__(self, env, agent, gamma, steps_count=1, steps_delta=1):
@@ -121,8 +121,8 @@ class ExperienceSourceBuffer:
     def __init__(self, buffer, steps_count=1):
         """
         Create buffered experience source
-        :param buffer: list of episodes, each is a list of Experience object 
-        :param steps_count: count of steps in every entry 
+        :param buffer: list of episodes, each is a list of Experience object
+        :param steps_count: count of steps in every entry
         """
         self.update_buffer(buffer)
         self.steps_count = steps_count
@@ -142,9 +142,13 @@ class ExperienceSourceBuffer:
 
 
 class ExperienceReplayBuffer:
-    def __init__(self, experience_source, buffer_size=None):
+    def __init__(self, experience_source, buffer_size):
+        assert isinstance(experience_source, ExperienceSource)
+        assert isinstance(buffer_size, int)
         self.experience_source_iter = iter(experience_source)
-        self.buffer = deque(maxlen=buffer_size)
+        self.buffer = []
+        self.capacity = buffer_size
+        self.pos = 0
 
     def __len__(self):
         return len(self.buffer)
@@ -156,8 +160,8 @@ class ExperienceReplayBuffer:
         """
         Get one random batch from experience replay
         TODO: implement sampling order policy
-        :param batch_size: 
-        :return: 
+        :param batch_size:
+        :return:
         """
         if len(self.buffer) <= batch_size:
             return self.buffer
@@ -172,7 +176,11 @@ class ExperienceReplayBuffer:
         """
         for _ in range(samples):
             entry = next(self.experience_source_iter)
-            self.buffer.append(entry)
+            if len(self.buffer) < self.capacity:
+                self.buffer.append(entry)
+            else:
+                self.buffer[self.pos] = entry
+                self.pos = (self.pos + 1) % self.capacity
 
 
 class PrioReplayBuffer:
@@ -208,7 +216,7 @@ class PrioReplayBuffer:
 
 class BatchPreprocessor:
     """
-    Abstract preprocessor class descendants to which converts experience 
+    Abstract preprocessor class descendants to which converts experience
     batch to form suitable to learning.
     """
     def preprocess(self, batch):
@@ -217,9 +225,9 @@ class BatchPreprocessor:
 
 class QLearningPreprocessor(BatchPreprocessor):
     """
-    Supports SimpleDQN, TargetDQN, DoubleDQN and can additionally feed TD-error back to 
+    Supports SimpleDQN, TargetDQN, DoubleDQN and can additionally feed TD-error back to
     experience replay buffer.
-    
+
     To use different modes, use appropriate class method
     """
     def __init__(self, model, target_model, use_double_dqn=False, batch_td_error_hook=None, gamma=0.99, cuda=False):
@@ -245,9 +253,9 @@ class QLearningPreprocessor(BatchPreprocessor):
     def _calc_Q(self, states_first, states_last):
         """
         Calculates apropriate q values for first and last states. Way of calculate depends on our settings.
-        :param states_first: numpy array of first states 
-        :param states_last: numpy array of last states 
-        :return: tuple of numpy arrays of q values 
+        :param states_first: numpy array of first states
+        :param states_last: numpy array of last states
+        :return: tuple of numpy arrays of q values
         """
         # here we need both first and last values calculated using our main model, so we
         # combine both states into one batch for efficiency and separate results later
@@ -277,8 +285,8 @@ class QLearningPreprocessor(BatchPreprocessor):
         2. target DQN: max(Q(states, target_model))
         3. double DQN: Q(states, target_model)[argmax(Q(states, model)]
         :param states_last: numpy array of last states from the games
-        :param q_last: numpy array of last q values 
-        :return: vector of target rewards 
+        :param q_last: numpy array of last q values
+        :return: vector of target rewards
         """
         # in this case we handle both simple DQN and target DQN
         if self.target_model is None or not self.use_double_dqn:
@@ -297,7 +305,7 @@ class QLearningPreprocessor(BatchPreprocessor):
         """
         Calculates data for Q learning from batch of observations
         :param batch: list of lists of Experience objects
-        :return: tuple of numpy arrays: 
+        :return: tuple of numpy arrays:
             1. states -- observations
             2. target Q-values
             3. vector of td errors for every batch entry
