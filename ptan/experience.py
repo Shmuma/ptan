@@ -184,25 +184,37 @@ class ExperienceReplayBuffer:
 
 
 class PrioReplayBuffer:
-    def __init__(self, exp_source, buf_size, prob_alpha):
+    def __init__(self, exp_source, buf_size, prob_alpha=0.6):
         self.exp_source_iter = iter(exp_source)
         self.prob_alpha = prob_alpha
-        self.buffer = collections.deque(maxlen=buf_size)
-        self.priorities = collections.deque(maxlen=buf_size)
+        self.capacity = buf_size
+        self.pos = 0
+        self.buffer = []
+        self.priorities = np.zeros((buf_size, ), dtype=np.float32)
 
     def __len__(self):
         return len(self.buffer)
 
-    def populate(self, samples):
-        max_prio = max(self.priorities) if self.priorities else 1.0
-        for _ in range(samples):
-            self.buffer.append(next(self.exp_source_iter))
-            self.priorities.append(max_prio)
+    def populate(self, count):
+        max_prio = self.priorities.max() if self.buffer else 1.0
+        for _ in range(count):
+            sample = next(self.exp_source_iter)
+            if len(self.buffer) < self.capacity:
+                self.buffer.append(sample)
+            else:
+                self.buffer[self.pos] = sample
+            self.priorities[self.pos] = max_prio
+            self.pos = (self.pos + 1) % self.capacity
 
-    def sample(self, batch_size, beta):
-        probs = np.array(self.priorities, dtype=np.float32) ** self.prob_alpha
+    def sample(self, batch_size, beta=0.4):
+        if len(self.buffer) == self.capacity:
+            prios = self.priorities
+        else:
+            prios = self.priorities[:self.pos]
+        probs = np.array(prios, dtype=np.float32) ** self.prob_alpha
+
         probs /= probs.sum()
-        indices = np.random.choice(len(self.buffer), batch_size, p=probs, replace=False)
+        indices = np.random.choice(len(self.buffer), batch_size, p=probs, replace=True)
         samples = [self.buffer[idx] for idx in indices]
         total = len(self.buffer)
         weights = (total * probs[indices]) ** (-beta)
