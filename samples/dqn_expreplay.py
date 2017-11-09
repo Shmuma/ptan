@@ -46,13 +46,13 @@ if __name__ == "__main__":
     agent = ptan.agent.DQNAgent(model, action_selector, cuda=cuda_enabled)
 
     exp_source = ptan.experience.ExperienceSource(env=env, agent=agent, steps_count=run.getint("defaults", "n_steps"))
-    exp_replay = ptan.experience.ExperienceReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
+    exp_replay = ptan.experience.ExperienceReplayBuffer(exp_source, capacity=run.getint("exp_buffer", "size"))
 
     def batch_to_train(batch):
         """
         Convert batch into training data using bellman's equation
-        :param batch: list of tuples with Experience instances 
-        :return: 
+        :param batch: list of tuples with Experience instances
+        :return:
         """
         states = []
         q_vals = []
