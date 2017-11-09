@@ -270,7 +270,7 @@ class PrioritizedReplayBuffer(ExperienceReplayBuffer):
             p_sample = self._it_sum[idx] / self._it_sum.sum()
             weight = (p_sample * len(self)) ** (-beta)
             weights.append(weight / max_weight)
-        weights = np.array(weights)
+        weights = np.array(weights, dtype=np.float32)
         samples = [self.buffer[idx] for idx in idxes]
         return samples, idxes, weights
 
