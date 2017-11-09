@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-import sys
 import gym
 import ptan
-import time
 import numpy as np
 import argparse
 
@@ -14,37 +12,19 @@ from torch.autograd import Variable
 
 from tensorboardX import SummaryWriter
 
-from lib import tools
+from lib import common
 
-PONG_MODE = True
-
-if PONG_MODE:
-    DEFAULT_ENV_NAME = "PongNoFrameskip-v4"
-    MEAN_REWARD_BOUND = 19.5
-    RUN_NAME = "pong"
-    REPLAY_SIZE = 10000
-    REPLAY_START_SIZE = 10000
-    EPSILON_DECAY_LAST_FRAME = 10 ** 5
-else:
-    DEFAULT_ENV_NAME = "BreakoutNoFrameskip-v4"
-    MEAN_REWARD_BOUND = 500
-    RUN_NAME = "breakout"
-    REPLAY_SIZE = 100000
-    REPLAY_START_SIZE = 50000
-    EPSILON_DECAY_LAST_FRAME = 10**6
-
-GAMMA = 0.99
-BATCH_SIZE = 32
-LEARNING_RATE = 1e-4
-SYNC_TARGET_FRAMES = 1000
-
-EPSILON_START = 1.0
-EPSILON_FINAL = 0.02
+import matplotlib as mpl
+mpl.use("Agg")
+import matplotlib.pylab as plt
 
 Vmax = 10
 Vmin = -10
 N_ATOMS = 51
 DELTA_Z = (Vmax - Vmin) / (N_ATOMS - 1)
+
+STATES_TO_EVALUATE = 1000
+EVAL_EVERY_FRAME = 100
 
 
 class DistributionalDQN(nn.Module):
@@ -95,24 +75,41 @@ class DistributionalDQN(nn.Module):
         return self.softmax(t.view(-1, N_ATOMS)).view(t.size())
 
 
-def unpack_batch(batch):
-    states, actions, rewards, dones, last_states = [], [], [], [], []
-    for exp in batch:
-        state = np.array(exp.state, copy=False)
-        states.append(state)
-        actions.append(exp.action)
-        rewards.append(exp.reward)
-        dones.append(exp.last_state is None)
-        if exp.last_state is None:
-            last_states.append(state)       # the result will be masked anyway
-        else:
-            last_states.append(np.array(exp.last_state, copy=False))
-    return np.array(states, copy=False), np.array(actions), np.array(rewards, dtype=np.float32), \
-           np.array(dones, dtype=np.uint8), np.array(last_states, copy=False)
+def calc_values_of_states(states, net, cuda=False):
+    mean_vals = []
+    for batch in np.array_split(states, 64):
+        states_v = Variable(torch.from_numpy(batch), volatile=True)
+        if cuda:
+            states_v = states_v.cuda()
+        action_values_v = net.qvals(states_v)
+        best_action_values_v = action_values_v.max(1)[0]
+        mean_val = best_action_values_v.mean().data.cpu().numpy()[0]
+        mean_vals.append(mean_val)
+    return np.mean(mean_vals)
 
 
-def calc_loss(batch, net, tgt_net, cuda=False):
-    states, actions, rewards, dones, next_states = unpack_batch(batch)
+def save_state_images(frame_idx, states, net, cuda=False, max_states=200):
+    ofs = 0
+    p = np.arange(Vmin, Vmax + DELTA_Z, DELTA_Z)
+    for batch in np.array_split(states, 64):
+        states_v = Variable(torch.from_numpy(batch), volatile=True)
+        if cuda:
+            states_v = states_v.cuda()
+        action_prob = net.apply_softmax(net(states_v)).data.cpu().numpy()
+        batch_size, num_actions, _ = action_prob.shape
+        for batch_idx in range(batch_size):
+            plt.clf()
+            for action_idx in range(num_actions):
+                plt.subplot(num_actions, 1, action_idx+1)
+                plt.bar(p, action_prob[batch_idx, action_idx], width=0.5)
+            plt.savefig("states/%05d_%08d.png" % (ofs + batch_idx, frame_idx))
+        ofs += batch_size
+        if ofs >= max_states:
+            break
+
+
+def calc_loss(batch, net, tgt_net, gamma, cuda=False, save_prefix=None):
+    states, actions, rewards, dones, next_states = common.unpack_batch(batch)
     batch_size = len(batch)
 
     states_v = Variable(torch.from_numpy(states))
@@ -128,14 +125,11 @@ def calc_loss(batch, net, tgt_net, cuda=False):
     next_actions = next_qvals_v.max(1)[1].data.cpu().numpy()
     next_distr = tgt_net.apply_softmax(next_distr_v).data.cpu().numpy()
 
-    # in paper: p (distribution for the next best action)
     next_best_distr = next_distr[range(batch_size), next_actions]
-
-    # for samples at the end of episode, next distribution will have 1 probability at 0 score
     dones = dones.astype(np.bool)
 
     # project our distribution using Bellman update
-    proj_distr = tools.distr_projection(next_best_distr, rewards, dones, Vmin, Vmax, N_ATOMS, GAMMA)
+    proj_distr = common.distr_projection(next_best_distr, rewards, dones, Vmin, Vmax, N_ATOMS, gamma)
 
     # calculate net output
     distr_v = net(states_v)
@@ -144,70 +138,106 @@ def calc_loss(batch, net, tgt_net, cuda=False):
     proj_distr_v = Variable(torch.from_numpy(proj_distr))
     if cuda:
         proj_distr_v = proj_distr_v.cuda()
+
+    if save_prefix is not None:
+        pred = F.softmax(state_action_values).data.cpu().numpy()
+        for batch_idx in range(batch_size):
+            is_done = dones[batch_idx]
+            reward = rewards[batch_idx]
+            plt.clf()
+            p = np.arange(Vmin, Vmax+DELTA_Z, DELTA_Z)
+            plt.subplot(3, 1, 1)
+            plt.bar(p, pred[batch_idx], width=0.5)
+            plt.title("Predicted")
+            plt.subplot(3, 1, 2)
+            plt.bar(p, proj_distr[batch_idx], width=0.5)
+            plt.title("Projected")
+            plt.subplot(3, 1, 3)
+            plt.bar(p, next_best_distr[batch_idx], width=0.5)
+            plt.title("Next state")
+            suffix = ""
+            if reward != 0.0:
+                suffix = suffix + "_%.0f" % reward
+            if is_done:
+                suffix = suffix + "_done"
+            plt.savefig("%s_%02d%s.png" % (save_prefix, batch_idx, suffix))
+
     loss_v = -state_log_sm_v * proj_distr_v
     return loss_v.sum(dim=1).mean()
 
 
 if __name__ == "__main__":
+    params = common.HYPERPARAMS['pong']
+    params['epsilon_frames'] = 200000
+#    params['learning_rate'] = 0.0004
+#    params['epsilon_final'] = 0.1
+    params['replay_size'] = 200000
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     args = parser.parse_args()
 
-    env = gym.make(DEFAULT_ENV_NAME)
+    env = gym.make(params['env_name'])
     env = ptan.common.wrappers.wrap_dqn(env)
 
-    writer = SummaryWriter(comment="-" + RUN_NAME + "-distrib")
+    writer = SummaryWriter(comment="-" + params['run_name'] + "-distrib")
     net = DistributionalDQN(env.observation_space.shape, env.action_space.n)
     if args.cuda:
         net.cuda()
 
     tgt_net = ptan.agent.TargetNet(net)
-    epsilon_greedy_selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=1.0)
-    agent = ptan.agent.DQNAgent(lambda x: net.qvals(x), epsilon_greedy_selector, cuda=args.cuda)
+    selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
+    epsilon_tracker = common.EpsilonTracker(selector, params)
+    agent = ptan.agent.DQNAgent(lambda x: net.qvals(x), selector, cuda=args.cuda)
 
-    exp_source = ptan.experience.ExperienceSourceFirstLast(env, agent, gamma=GAMMA, steps_count=1)
-    buffer = ptan.experience.ExperienceReplayBuffer(exp_source, buffer_size=REPLAY_SIZE)
-    optimizer = optim.Adam(net.parameters(), lr=LEARNING_RATE)
+    exp_source = ptan.experience.ExperienceSourceFirstLast(env, agent, gamma=params['gamma'], steps_count=1)
+    buffer = ptan.experience.ExperienceReplayBuffer(exp_source, buffer_size=params['replay_size'])
+    optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
 
     frame_idx = 0
-    ts_frame = 0
-    ts = time.time()
+    eval_states = None
+    prev_save = 0
+    save_prefix = None
 
-    total_rewards = []
-    while True:
-        frame_idx += 1
-        buffer.populate(1)
-        epsilon_greedy_selector.epsilon = max(EPSILON_FINAL, EPSILON_START - frame_idx / EPSILON_DECAY_LAST_FRAME)
+    with common.RewardTracker(writer, params['stop_reward']) as reward_tracker:
+        while True:
+            frame_idx += 1
+            buffer.populate(1)
+            epsilon_tracker.frame(frame_idx)
 
-        new_rewards = exp_source.pop_total_rewards()
-        if new_rewards:
-            total_rewards.extend(new_rewards)
-            speed = (frame_idx - ts_frame) / (time.time() - ts)
-            ts_frame = frame_idx
-            ts = time.time()
-            mean_reward = np.mean(total_rewards[-100:])
-            print("%d: done %d games, mean reward %.3f, eps %.2f, speed %.2f f/s" % (
-                frame_idx, len(total_rewards), mean_reward, epsilon_greedy_selector.epsilon,
-                speed
-            ))
-            sys.stdout.flush()
-            writer.add_scalar("epsilon", epsilon_greedy_selector.epsilon, frame_idx)
-            writer.add_scalar("speed", speed, frame_idx)
-            writer.add_scalar("reward_100", mean_reward, frame_idx)
-            writer.add_scalar("reward", new_rewards[0], frame_idx)
-            if mean_reward > MEAN_REWARD_BOUND:
-                print("Solved in %d frames!" % frame_idx)
-                break
+            new_rewards = exp_source.pop_total_rewards()
+            if new_rewards:
+                if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon):
+                    break
 
-        if len(buffer) < REPLAY_START_SIZE:
-            continue
+            if len(buffer) < params['replay_initial']:
+                continue
 
-        optimizer.zero_grad()
-        batch = buffer.sample(BATCH_SIZE)
-        loss_v = calc_loss(batch, net, tgt_net.target_model, cuda=args.cuda)
-        loss_v.backward()
-        optimizer.step()
+            if eval_states is None:
+                eval_states = buffer.sample(STATES_TO_EVALUATE)
+                eval_states = [np.array(transition.state, copy=False) for transition in eval_states]
+                eval_states = np.array(eval_states, copy=False)
 
-        if frame_idx % SYNC_TARGET_FRAMES == 0:
-            tgt_net.sync()
-    writer.close()
+            optimizer.zero_grad()
+            batch = buffer.sample(params['batch_size'])
+
+            interesting = any(map(lambda s: s.last_state is None or s.reward != 0.0, batch))
+            if interesting and frame_idx // 30000 > prev_save:
+                save_prefix = "images/img_%08d" % frame_idx
+                prev_save = frame_idx // 30000
+            else:
+                save_prefix = None
+
+            loss_v = calc_loss(batch, net, tgt_net.target_model, gamma=params['gamma'],
+                               cuda=args.cuda, save_prefix=save_prefix)
+            loss_v.backward()
+            optimizer.step()
+
+            if frame_idx % params['target_net_sync'] == 0:
+                tgt_net.sync()
+
+            if frame_idx % EVAL_EVERY_FRAME == 0:
+                mean_val = calc_values_of_states(eval_states, net, cuda=args.cuda)
+                writer.add_scalar("values_mean", mean_val, frame_idx)
+
+            if frame_idx % 10000 == 0:
+                save_state_images(frame_idx, eval_states, net, cuda=args.cuda)
