@@ -95,7 +95,7 @@ class TestExperienceReplayBuffer(TestCase):
         cls.source = experience.ExperienceSource(env, agent=DummyAgent())
 
     def test_len(self):
-        buf = experience.ExperienceReplayBuffer(self.source, capacity=2)
+        buf = experience.ExperienceReplayBuffer(self.source, buffer_size=2)
         self.assertEqual(0, len(buf))
         self.assertEqual([], list(buf))
 

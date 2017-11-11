@@ -79,7 +79,7 @@ if __name__ == "__main__":
     agent = ptan.agent.DQNAgent(net, selector, cuda=args.cuda)
 
     exp_source = ptan.experience.ExperienceSourceFirstLast(env, agent, gamma=params['gamma'], steps_count=1)
-    buffer = ptan.experience.ExperienceReplayBuffer(exp_source, capacity=params['replay_size'])
+    buffer = ptan.experience.ExperienceReplayBuffer(exp_source, buffer_size=params['replay_size'])
     optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
 
     frame_idx = 0

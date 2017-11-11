@@ -143,12 +143,12 @@ class ExperienceSourceBuffer:
 
 
 class ExperienceReplayBuffer:
-    def __init__(self, experience_source, capacity):
+    def __init__(self, experience_source, buffer_size):
         assert isinstance(experience_source, ExperienceSource)
-        assert isinstance(capacity, int)
+        assert isinstance(buffer_size, int)
         self.experience_source_iter = iter(experience_source)
         self.buffer = []
-        self.capacity = capacity
+        self.capacity = buffer_size
         self.pos = 0
 
     def __len__(self):
@@ -230,13 +230,13 @@ class PrioReplayBufferNaive:
 
 
 class PrioritizedReplayBuffer(ExperienceReplayBuffer):
-    def __init__(self, experience_source, capacity, alpha):
-        super(PrioritizedReplayBuffer, self).__init__(experience_source, capacity)
+    def __init__(self, experience_source, buffer_size, alpha):
+        super(PrioritizedReplayBuffer, self).__init__(experience_source, buffer_size)
         assert alpha > 0
         self._alpha = alpha
 
         it_capacity = 1
-        while it_capacity < capacity:
+        while it_capacity < buffer_size:
             it_capacity *= 2
 
         self._it_sum = utils.SumSegmentTree(it_capacity)

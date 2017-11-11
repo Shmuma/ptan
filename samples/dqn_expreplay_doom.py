@@ -92,7 +92,7 @@ if __name__ == "__main__":
     action_selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=run.getfloat("defaults", "epsilon"))
     dqn_agent = agent.DQNAgent(dqn_model=model, action_selector=action_selector, cuda=cuda_enabled)
     exp_source = experience.ExperienceSource(env=env_pool, agent=dqn_agent, steps_count=run.getint("defaults", "n_steps"))
-    exp_replay = experience.ExperienceReplayBuffer(exp_source, capacity=run.getint("exp_buffer", "size"))
+    exp_replay = experience.ExperienceReplayBuffer(exp_source, buffer_size=run.getint("exp_buffer", "size"))
 
     def batch_to_train(batch):
         """
