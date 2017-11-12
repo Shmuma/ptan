@@ -54,7 +54,7 @@ class PrioReplayBuffer:
         total = len(self.buffer)
         weights = (total * probs[indices]) ** (-beta)
         weights /= weights.max()
-        return samples, indices, weights
+        return samples, indices, np.array(weights, dtype=np.float32)
 
     def update_priorities(self, batch_indices, batch_priorities):
         for idx, prio in zip(batch_indices, batch_priorities):
@@ -85,7 +85,7 @@ def calc_loss(batch, batch_weights, net, tgt_net, gamma, cuda=False):
 
     expected_state_action_values = next_state_values * gamma + rewards_v
     losses_v = batch_weights_v * (state_action_values - expected_state_action_values) ** 2
-    return losses_v.mean(), losses_v
+    return losses_v.mean(), losses_v + 1e-5
 
 
 if __name__ == "__main__":
