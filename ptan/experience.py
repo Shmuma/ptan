@@ -41,14 +41,16 @@ class ExperienceSource:
         self.steps_count = steps_count
         self.steps_delta = steps_delta
         self.total_rewards = []
+        self.total_steps = []
         self.agent_states = [agent.initial_state() for _ in self.pool]
 
     def __iter__(self):
-        states, histories, cur_rewards = [], [], []
+        states, histories, cur_rewards, cur_steps = [], [], [], []
         for env in self.pool:
             states.append(env.reset())
             histories.append(deque(maxlen=self.steps_count))
             cur_rewards.append(0.0)
+            cur_steps.append(0)
 
         iter_idx = 0
         while True:
@@ -60,6 +62,7 @@ class ExperienceSource:
                 history = histories[idx]
                 next_state, r, is_done, _ = env.step(action)
                 cur_rewards[idx] += r
+                cur_steps[idx] += 1
                 history.append(Experience(state=state, action=action, reward=r, done=is_done))
                 if len(history) == self.steps_count and iter_idx % self.steps_delta == 0:
                     yield tuple(history)
@@ -70,7 +73,9 @@ class ExperienceSource:
                         yield tuple(history)
                         history.popleft()
                     self.total_rewards.append(cur_rewards[idx])
+                    self.total_steps.append(cur_steps[idx])
                     cur_rewards[idx] = 0.0
+                    cur_steps[idx] = 0
                     states[idx] = env.reset()
                     self.agent_states[idx] = self.agent.initial_state()
                     history.clear()
@@ -80,6 +85,12 @@ class ExperienceSource:
         r = self.total_rewards
         self.total_rewards = []
         return r
+
+    def pop_rewards_steps(self):
+        res = list(zip(self.total_rewards, self.total_steps))
+        if res:
+            self.total_rewards, self.total_steps = [], []
+        return res
 
 
 # those entries are emitted from ExperienceSourceFirstLast. Reward is discounted over the trajectory piece
