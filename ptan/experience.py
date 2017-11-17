@@ -83,7 +83,9 @@ class ExperienceSource:
 
     def pop_total_rewards(self):
         r = self.total_rewards
-        self.total_rewards = []
+        if r:
+            self.total_rewards = []
+            self.total_steps = []
         return r
 
     def pop_rewards_steps(self):
