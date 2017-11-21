@@ -11,7 +11,6 @@ from lib import dqn_model, common
 
 if __name__ == "__main__":
     params = common.HYPERPARAMS['pong']
-#    params['epsilon_frames'] = 200000
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     args = parser.parse_args()
