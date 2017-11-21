@@ -9,6 +9,8 @@ from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common
 
+PLAY_STEPS = 4
+
 
 def play_func(params, net, cuda, exp_queue):
     env = gym.make(params['env_name'])
@@ -37,12 +39,11 @@ def play_func(params, net, cuda, exp_queue):
                 if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon):
                     break
 
-    print("Game solved!")
-
 
 if __name__ == "__main__":
     mp.set_start_method('spawn')
     params = common.HYPERPARAMS['pong']
+    params['batch_size'] *= PLAY_STEPS
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     args = parser.parse_args()
@@ -53,23 +54,25 @@ if __name__ == "__main__":
     net = dqn_model.DQN(env.observation_space.shape, env.action_space.n)
     if args.cuda:
         net.cuda()
+    net.share_memory()
 
     tgt_net = ptan.agent.TargetNet(net)
 
     buffer = ptan.experience.ExperienceReplayBuffer(experience_source=None, buffer_size=params['replay_size'])
     optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
 
-    exp_queue = mp.Queue(maxsize=10)
+    exp_queue = mp.Queue(maxsize=PLAY_STEPS * 2)
     play_proc = mp.Process(target=play_func, args=(params, net, args.cuda, exp_queue))
     play_proc.start()
 
     frame_idx = 0
 
     while play_proc.is_alive():
-        frame_idx += 1
         if not exp_queue.empty():
-            new_exp = exp_queue.get()
-            buffer._add(new_exp)
+            for _ in range(PLAY_STEPS):
+                new_exp = exp_queue.get()
+                buffer._add(new_exp)
+                frame_idx += 1
 
         if len(buffer) < params['replay_initial']:
             continue

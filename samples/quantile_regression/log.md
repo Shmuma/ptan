@@ -29,4 +29,6 @@ By using torch.multiprocessing implemented play inside the separate process, whi
 via shared queue.
 
 Results: 
-Steps=1: 221 f/s
+* Steps=1: 221 f/s
+* Steps=2: 315 f/s
+* Steps=4: 393 f/s
