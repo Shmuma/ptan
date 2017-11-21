@@ -23,3 +23,10 @@ make much difference if we perform several steps (not too many) between optimisa
 * Steps=8: 246 f/s, GPU 32%
 * Steps=16: 254 f/s, GPU 30%: doesn't converge
 
+## Play in a separate process
+
+By using torch.multiprocessing implemented play inside the separate process, which produces experience 
+via shared queue.
+
+Results: 
+Steps=1: 221 f/s
