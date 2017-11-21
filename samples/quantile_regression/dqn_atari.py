@@ -8,9 +8,11 @@ from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common
 
+STEPS_BATCH = 2
 
 if __name__ == "__main__":
     params = common.HYPERPARAMS['pong']
+    params['batch_size'] *= STEPS_BATCH
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     args = parser.parse_args()
@@ -36,14 +38,18 @@ if __name__ == "__main__":
 
     with common.RewardTracker(writer, params['stop_reward']) as reward_tracker:
         while True:
-            frame_idx += 1
-            buffer.populate(1)
+            buffer.populate(STEPS_BATCH)
             epsilon_tracker.frame(frame_idx)
 
             new_rewards = exp_source.pop_total_rewards()
             if new_rewards:
                 if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon):
                     break
+
+            for _ in range(STEPS_BATCH):
+                frame_idx += 1
+                if frame_idx % params['target_net_sync'] == 0:
+                    tgt_net.sync()
 
             if len(buffer) < params['replay_initial']:
                 continue
@@ -53,6 +59,3 @@ if __name__ == "__main__":
             loss_v = common.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=params['gamma'], cuda=args.cuda)
             loss_v.backward()
             optimizer.step()
-
-            if frame_idx % params['target_net_sync'] == 0:
-                tgt_net.sync()
