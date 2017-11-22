@@ -9,7 +9,7 @@ from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common
 
-PLAY_STEPS = 4
+PLAY_STEPS = 3
 
 
 def play_func(params, net, cuda, exp_queue):
@@ -73,6 +73,8 @@ if __name__ == "__main__":
                 new_exp = exp_queue.get()
                 buffer._add(new_exp)
                 frame_idx += 1
+                if frame_idx % params['target_net_sync'] == 0:
+                    tgt_net.sync()
 
         if len(buffer) < params['replay_initial']:
             continue
@@ -83,5 +85,3 @@ if __name__ == "__main__":
         loss_v.backward()
         optimizer.step()
 
-        if frame_idx % params['target_net_sync'] == 0:
-            tgt_net.sync()

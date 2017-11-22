@@ -31,4 +31,7 @@ via shared queue.
 Results: 
 * Steps=1: 221 f/s
 * Steps=2: 315 f/s
-* Steps=4: 393 f/s
+* Steps=3: 370 f/s
+* Steps=4: 393 f/s: convergence slowed down, so steps=2 is optimal
+
+Next: move gameplay on CPU. Upd: speed is much worse
