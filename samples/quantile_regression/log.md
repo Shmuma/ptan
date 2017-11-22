@@ -60,4 +60,11 @@ Baseline is Steps=3, 384 f/s
 * Without clip_rewards: 445 f/s
 * Without both episodic_life and clip_rewards: 440 f/s
 * Without pytorch reshape: 390 f/s
- 
+
+## Final numbers
+
+159 f/s -> 445 f/s: **180% speedup**
+
+## Bonus: put play on a different GPU
+
+
