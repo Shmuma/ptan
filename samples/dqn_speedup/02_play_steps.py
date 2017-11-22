@@ -3,16 +3,24 @@ import gym
 import ptan
 import argparse
 
+import numpy as np
+import torch
 import torch.optim as optim
 
 from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common
 
+SEED = 1423
+
 PLAY_STEPS = 3
 
 
 if __name__ == "__main__":
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+
     params = common.HYPERPARAMS['pong']
     params['batch_size'] *= PLAY_STEPS
     parser = argparse.ArgumentParser()
@@ -21,6 +29,7 @@ if __name__ == "__main__":
 
     env = gym.make(params['env_name'])
     env = ptan.common.wrappers.wrap_dqn(env)
+    env.seed(SEED)
 
     writer = SummaryWriter(comment="-" + params['run_name'] + "-02_play_steps=%d" % PLAY_STEPS)
     net = dqn_model.DQN(env.observation_space.shape, env.action_space.n)
