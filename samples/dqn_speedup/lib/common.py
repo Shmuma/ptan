@@ -82,7 +82,7 @@ def unpack_batch(batch):
            np.array(dones, dtype=np.uint8), np.array(last_states, copy=False)
 
 
-def calc_loss_dqn(batch, net, tgt_net, gamma, cuda=False):
+def calc_loss_dqn(batch, net, tgt_net, gamma, cuda=False, cuda_async=False):
     states, actions, rewards, dones, next_states = unpack_batch(batch)
 
     states_v = Variable(torch.from_numpy(states))
@@ -91,11 +91,11 @@ def calc_loss_dqn(batch, net, tgt_net, gamma, cuda=False):
     rewards_v = Variable(torch.from_numpy(rewards))
     done_mask = torch.ByteTensor(dones)
     if cuda:
-        states_v = states_v.cuda(async=True)
-        next_states_v = next_states_v.cuda(async=True)
-        actions_v = actions_v.cuda(async=True)
-        rewards_v = rewards_v.cuda(async=True)
-        done_mask = done_mask.cuda(async=True)
+        states_v = states_v.cuda(async=cuda_async)
+        next_states_v = next_states_v.cuda(async=cuda_async)
+        actions_v = actions_v.cuda(async=cuda_async)
+        rewards_v = rewards_v.cuda(async=cuda_async)
+        done_mask = done_mask.cuda(async=cuda_async)
 
     state_action_values = net(states_v).gather(1, actions_v.unsqueeze(-1)).squeeze(-1)
     next_state_values = tgt_net(next_states_v).max(1)[0]
