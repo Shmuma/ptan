@@ -9,20 +9,20 @@ from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common
 
-PLAY_STEPS = 2
-
 
 if __name__ == "__main__":
     params = common.HYPERPARAMS['pong']
-    params['batch_size'] *= PLAY_STEPS
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
+    parser.add_argument("-s", "--steps", type=int, default=1, help="Play steps to use, default=1")
     args = parser.parse_args()
+
+    params['batch_size'] *= args.steps
 
     env = gym.make(params['env_name'])
     env = ptan.common.wrappers.wrap_dqn(env)
 
-    writer = SummaryWriter(comment="-" + params['run_name'] + "-02_play_steps=%d" % PLAY_STEPS)
+    writer = SummaryWriter(comment="-" + params['run_name'] + "-02_play_steps=%d" % args.steps)
     net = dqn_model.DQN(env.observation_space.shape, env.action_space.n)
     if args.cuda:
         net.cuda()
@@ -40,8 +40,8 @@ if __name__ == "__main__":
 
     with common.RewardTracker(writer, params['stop_reward']) as reward_tracker:
         while True:
-            frame_idx += PLAY_STEPS
-            buffer.populate(PLAY_STEPS)
+            frame_idx += args.steps
+            buffer.populate(args.steps)
             epsilon_tracker.frame(frame_idx)
 
             new_rewards = exp_source.pop_total_rewards()
@@ -58,5 +58,5 @@ if __name__ == "__main__":
             loss_v.backward()
             optimizer.step()
 
-            if frame_idx % params['target_net_sync'] < PLAY_STEPS:
+            if frame_idx % params['target_net_sync'] < args.steps:
                 tgt_net.sync()

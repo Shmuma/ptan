@@ -9,7 +9,7 @@ from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common, atari_wrappers
 
-PLAY_STEPS = 2
+PLAY_STEPS = 3
 
 
 def make_env(params):
@@ -21,7 +21,7 @@ def make_env(params):
 def play_func(params, net, cuda, exp_queue):
     env = make_env(params)
 
-    writer = SummaryWriter(comment="-" + params['run_name'] + "-05_new_wrappers")
+    writer = SummaryWriter(comment="-" + params['run_name'] + "-05_new_wrappers_steps=%d" % PLAY_STEPS)
 
     selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = common.EpsilonTracker(selector, params)
