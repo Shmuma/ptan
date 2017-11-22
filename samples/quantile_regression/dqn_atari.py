@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import gym
 import ptan
 import argparse
 import torch.optim as optim
@@ -7,14 +6,18 @@ import torch.multiprocessing as mp
 
 from tensorboardX import SummaryWriter
 
-from lib import dqn_model, common
+from lib import dqn_model, common, atari_wrappers
 
 PLAY_STEPS = 3
 
 
+def make_env(params):
+    env = atari_wrappers.make_atari(params['env_name'])
+    return atari_wrappers.wrap_deepmind(env, frame_stack=True, pytorch_img=True)
+
+
 def play_func(params, net, cuda, exp_queue):
-    env = gym.make(params['env_name'])
-    env = ptan.common.wrappers.wrap_dqn(env)
+    env = make_env(params)
 
     writer = SummaryWriter(comment="-" + params['run_name'] + "-dqn")
 
@@ -47,8 +50,8 @@ if __name__ == "__main__":
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     args = parser.parse_args()
 
-    env = gym.make(params['env_name'])
-    env = ptan.common.wrappers.wrap_dqn(env)
+    env = make_env(params)
+    print(env.observation_space.shape)
 
     net = dqn_model.DQN(env.observation_space.shape, env.action_space.n)
     if args.cuda:

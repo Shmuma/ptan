@@ -50,3 +50,14 @@ Baseline is Steps=3 version (370 f/s), during buffer fill: 550 f/s
 ## Async in cuda() calls
 
 Increased from 370 f/s to 384 f/s
+
+## Latest atari wrappers
+
+Baseline is Steps=3, 384 f/s
+
+* New version with the same set of wrappers as before: 445 f/s (GPU 74%)
+* Without episodic_life: 450 f/s
+* Without clip_rewards: 445 f/s
+* Without both episodic_life and clip_rewards: 440 f/s
+* Without pytorch reshape: 390 f/s
+ 
