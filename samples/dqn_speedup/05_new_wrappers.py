@@ -14,7 +14,8 @@ PLAY_STEPS = 3
 
 def make_env(params):
     env = atari_wrappers.make_atari(params['env_name'])
-    return atari_wrappers.wrap_deepmind(env, frame_stack=True, pytorch_img=True)
+    env = atari_wrappers.wrap_deepmind(env, frame_stack=True, pytorch_img=True)
+    return env
 
 
 def play_func(params, net, cuda, exp_queue):
