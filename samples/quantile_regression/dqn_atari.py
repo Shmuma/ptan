@@ -51,7 +51,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     env = make_env(params)
-    print(env.observation_space.shape)
 
     net = dqn_model.DQN(env.observation_space.shape, env.action_space.n)
     if args.cuda:
