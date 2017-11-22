@@ -9,7 +9,7 @@ from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common, atari_wrappers
 
-PLAY_STEPS = 3
+PLAY_STEPS = 2
 
 
 def make_env(params):

@@ -3,15 +3,13 @@ import gym
 import ptan
 import argparse
 
-import numpy as np
-import torch
 import torch.optim as optim
 
 from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common
 
-PLAY_STEPS = 3
+PLAY_STEPS = 2
 
 
 if __name__ == "__main__":
