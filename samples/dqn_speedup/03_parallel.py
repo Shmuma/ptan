@@ -40,6 +40,8 @@ def play_func(params, net, cuda, exp_queue):
                 if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon):
                     break
 
+    exp_queue.put(None)
+
 
 if __name__ == "__main__":
     mp.set_start_method('spawn')
@@ -70,7 +72,11 @@ if __name__ == "__main__":
     while play_proc.is_alive():
         frame_idx += PLAY_STEPS
         for _ in range(PLAY_STEPS):
-            buffer._add(exp_queue.get())
+            exp = exp_queue.get()
+            if exp is None:
+                play_proc.join()
+                break
+            buffer._add(exp)
 
         if len(buffer) < params['replay_initial']:
             continue
