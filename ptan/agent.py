@@ -22,9 +22,9 @@ class BaseAgent:
     def __call__(self, states, agent_states):
         """
         Convert observations and states into actions to take
-        :param states: list of environment states to process 
-        :param agent_states: list of states with the same length as observations 
-        :return: tuple of actions, states 
+        :param states: list of environment states to process
+        :param agent_states: list of states with the same length as observations
+        :return: tuple of actions, states
         """
         assert isinstance(states, list)
         assert isinstance(agent_states, list)
@@ -36,7 +36,7 @@ class BaseAgent:
 def default_states_preprocessor(states):
     """
     Convert list of states into numpy array
-    :param states: list of numpy arrays with states 
+    :param states: list of numpy arrays with states
     :return: numpy array with the states
     """
     if len(states) == 1:
@@ -52,14 +52,16 @@ def float32_preprocessor(states):
 
 class DQNAgent(BaseAgent):
     """
-    DQNAgent is a memoryless DQN agent which calculates Q values 
+    DQNAgent is a memoryless DQN agent which calculates Q values
     from the observations and  converts them into the actions using action_selector
     """
-    def __init__(self, dqn_model, action_selector, cuda=False, preprocessor=default_states_preprocessor):
+    def __init__(self, dqn_model, action_selector, cuda=False, preprocessor=default_states_preprocessor,
+                 cuda_device_id=None):
         self.dqn_model = dqn_model
         self.action_selector = action_selector
         self.preprocessor = preprocessor
         self.cuda = cuda
+        self.cuda_device_id = cuda_device_id
 
     def __call__(self, states, agent_states=None):
         if agent_states is None:
@@ -68,7 +70,7 @@ class DQNAgent(BaseAgent):
             states = self.preprocessor(states)
         v = Variable(torch.from_numpy(states))
         if self.cuda:
-            v = v.cuda()
+            v = v.cuda(device_id=self.cuda_device_id)
         q_v = self.dqn_model(v)
         q = q_v.data.cpu().numpy()
         actions = self.action_selector(q)
@@ -89,7 +91,7 @@ class TargetNet:
     def alpha_sync(self, alpha):
         """
         Blend params of target net with params from the model
-        :param alpha: 
+        :param alpha:
         """
         assert isinstance(alpha, float)
         assert 0.0 < alpha <= 1.0
