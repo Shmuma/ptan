@@ -67,4 +67,9 @@ Baseline is Steps=3, 384 f/s
 
 ## Bonus: put play on a different GPU
 
+Frames between play and train nets sync:
+* 1: 430 f/s
+* 4: 455 f/s
+* 10: 457 f/s
 
+So, it doesn't worth it
