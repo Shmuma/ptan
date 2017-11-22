@@ -46,3 +46,7 @@ Baseline is Steps=3 version (370 f/s), during buffer fill: 550 f/s
 1. Get rid of sampling (train on constant buffer): 376 f/s
 2. No optimiser.step(): 400 f/s
 3. No calc_loss_dqn: 552 f/s (same as buffer fill)
+
+## Async in cuda() calls
+
+Increased from 370 f/s to 384 f/s

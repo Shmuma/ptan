@@ -91,11 +91,11 @@ def calc_loss_dqn(batch, net, tgt_net, gamma, cuda=False):
     rewards_v = Variable(torch.from_numpy(rewards))
     done_mask = torch.ByteTensor(dones)
     if cuda:
-        states_v = states_v.cuda()
-        next_states_v = next_states_v.cuda()
-        actions_v = actions_v.cuda()
-        rewards_v = rewards_v.cuda()
-        done_mask = done_mask.cuda()
+        states_v = states_v.cuda(async=True)
+        next_states_v = next_states_v.cuda(async=True)
+        actions_v = actions_v.cuda(async=True)
+        rewards_v = rewards_v.cuda(async=True)
+        done_mask = done_mask.cuda(async=True)
 
     state_action_values = net(states_v).gather(1, actions_v.unsqueeze(-1)).squeeze(-1)
     next_state_values = tgt_net(next_states_v).max(1)[0]

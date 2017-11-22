@@ -72,8 +72,6 @@ if __name__ == "__main__":
                 new_exp = exp_queue.get()
                 buffer._add(new_exp)
                 frame_idx += 1
-                if frame_idx % params['target_net_sync'] == 0:
-                    tgt_net.sync()
 
         if len(buffer) < params['replay_initial']:
             continue
@@ -84,3 +82,5 @@ if __name__ == "__main__":
         loss_v.backward()
         optimizer.step()
 
+        if frame_idx % params['target_net_sync'] < PLAY_STEPS:
+            tgt_net.sync()
