@@ -10,7 +10,7 @@ from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common
 
-PLAY_STEPS = 2
+PLAY_STEPS = 3
 
 
 def play_func(params, net, cuda, exp_queue):

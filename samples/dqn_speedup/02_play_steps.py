@@ -9,7 +9,7 @@ from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common
 
-PLAY_STEPS = 2
+PLAY_STEPS = 3
 
 
 if __name__ == "__main__":
