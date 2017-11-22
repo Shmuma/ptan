@@ -35,3 +35,14 @@ Results:
 * Steps=4: 393 f/s: convergence slowed down, so steps=2 is optimal
 
 Next: move gameplay on CPU. Upd: speed is much worse
+
+## CPU consumption in training and play process
+
+Training process uses 100% CPU core, which is weird, as it only sampling and preparing data for GPU.
+Need to experiment where CPU goes.
+
+Baseline is Steps=3 version (370 f/s), during buffer fill: 550 f/s
+
+1. Get rid of sampling (train on constant buffer): 376 f/s
+2. No optimiser.step(): 400 f/s
+3. No calc_loss_dqn: 552 f/s (same as buffer fill)

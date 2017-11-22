@@ -39,7 +39,6 @@ def play_func(params, net, cuda, exp_queue):
                 if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon):
                     break
 
-
 if __name__ == "__main__":
     mp.set_start_method('spawn')
     params = common.HYPERPARAMS['pong']
