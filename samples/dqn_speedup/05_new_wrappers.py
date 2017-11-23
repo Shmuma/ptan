@@ -21,7 +21,14 @@ def make_env(params):
 
 
 def play_func(params, net, cuda, exp_queue, seed):
+    if seed is not None:
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+
     env = make_env(params)
+    if seed is not None:
+        env.seed(seed)
 
     suffix = "" if seed is None else "_seed=%d" % seed
     writer = SummaryWriter(comment="-" + params['run_name'] + "-05_new_wrappers_steps=%d%s" % (PLAY_STEPS, suffix))
@@ -59,13 +66,13 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=None, help="Random seed to use")
     args = parser.parse_args()
 
-    if args.seed:
+    if args.seed is not None:
         np.random.seed(args.seed)
         torch.manual_seed(args.seed)
         torch.cuda.manual_seed_all(args.seed)
 
     env = make_env(params)
-    if args.seed:
+    if args.seed is not None:
         env.seed(args.seed)
 
     net = dqn_model.DQN(env.observation_space.shape, env.action_space.n)
