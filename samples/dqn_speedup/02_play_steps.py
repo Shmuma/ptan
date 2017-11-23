@@ -11,13 +11,15 @@ from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common
 
+DEFAULT_SEED = 2
+
 
 if __name__ == "__main__":
     params = common.HYPERPARAMS['pong']
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     parser.add_argument("-s", "--steps", type=int, default=1, help="Play steps to use, default=1")
-    parser.add_argument("--seed", type=int, default=None, help="Random seed to use")
+    parser.add_argument("--seed", type=int, default=DEFAULT_SEED, help="Random seed to use")
     args = parser.parse_args()
 
     if args.seed is not None:
