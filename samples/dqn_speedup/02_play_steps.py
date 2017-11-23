@@ -3,6 +3,8 @@ import gym
 import ptan
 import argparse
 
+import numpy as np
+import torch
 import torch.optim as optim
 
 from tensorboardX import SummaryWriter
@@ -15,14 +17,22 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     parser.add_argument("-s", "--steps", type=int, default=1, help="Play steps to use, default=1")
+    parser.add_argument("--seed", type=int, default=None, help="Random seed to use")
     args = parser.parse_args()
+
+    if args.seed is not None:
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed_all(args.seed)
 
     params['batch_size'] *= args.steps
 
     env = gym.make(params['env_name'])
     env = ptan.common.wrappers.wrap_dqn(env)
+    if args.seed is not None:
+        env.seed(args.seed)
 
-    writer = SummaryWriter(comment="-" + params['run_name'] + "-02_play_steps=%d" % args.steps)
+    writer = SummaryWriter(comment="-" + params['run_name'] + "-02_play_steps=%d_seed=%s" % (args.steps, args.seed))
     net = dqn_model.DQN(env.observation_space.shape, env.action_space.n)
     if args.cuda:
         net.cuda()

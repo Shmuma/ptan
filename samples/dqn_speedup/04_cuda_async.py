@@ -3,6 +3,8 @@ import gym
 import ptan
 import argparse
 
+import numpy as np
+import torch
 import torch.optim as optim
 import torch.multiprocessing as mp
 
@@ -11,13 +13,22 @@ from tensorboardX import SummaryWriter
 from lib import dqn_model, common
 
 PLAY_STEPS = 3
+SEED = 1
+
+
+def init(params):
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+    env = gym.make(params['env_name'])
+    env = ptan.common.wrappers.wrap_dqn(env)
+    env.seed(SEED)
+    return env
 
 
 def play_func(params, net, cuda, exp_queue):
-    env = gym.make(params['env_name'])
-    env = ptan.common.wrappers.wrap_dqn(env)
-
-    writer = SummaryWriter(comment="-" + params['run_name'] + "-04_cuda_async_steps=%d" % PLAY_STEPS)
+    env = init(params)
+    writer = SummaryWriter(comment="-" + params['run_name'] + "-04_cuda_async")
 
     selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = common.EpsilonTracker(selector, params)
@@ -51,8 +62,7 @@ if __name__ == "__main__":
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     args = parser.parse_args()
 
-    env = gym.make(params['env_name'])
-    env = ptan.common.wrappers.wrap_dqn(env)
+    env = init(params)
 
     net = dqn_model.DQN(env.observation_space.shape, env.action_space.n)
     if args.cuda:
