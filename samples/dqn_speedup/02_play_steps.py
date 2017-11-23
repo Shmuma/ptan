@@ -34,7 +34,8 @@ if __name__ == "__main__":
     if args.seed is not None:
         env.seed(args.seed)
 
-    writer = SummaryWriter(comment="-" + params['run_name'] + "-02_play_steps=%d_seed=%s" % (args.steps, args.seed))
+    suffix = "" if args.seed == DEFAULT_SEED else "_seed=%s" % args.seed
+    writer = SummaryWriter(comment="-" + params['run_name'] + "-02_play_steps=%d%s" % (args.steps, suffix))
     net = dqn_model.DQN(env.observation_space.shape, env.action_space.n)
     if args.cuda:
         net.cuda()
