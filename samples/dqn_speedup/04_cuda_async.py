@@ -3,8 +3,6 @@ import gym
 import ptan
 import argparse
 
-import numpy as np
-import torch
 import torch.optim as optim
 import torch.multiprocessing as mp
 
@@ -12,17 +10,12 @@ from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common
 
-PLAY_STEPS = 3
-SEED = 1
+PLAY_STEPS = 4
 
 
 def init(params):
-    np.random.seed(SEED)
-    torch.manual_seed(SEED)
-    torch.cuda.manual_seed_all(SEED)
     env = gym.make(params['env_name'])
     env = ptan.common.wrappers.wrap_dqn(env)
-    env.seed(SEED)
     return env
 
 
