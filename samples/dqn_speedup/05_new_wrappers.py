@@ -2,8 +2,6 @@
 import ptan
 import argparse
 
-import numpy as np
-import torch
 import torch.optim as optim
 import torch.multiprocessing as mp
 
@@ -11,7 +9,7 @@ from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common, atari_wrappers
 
-PLAY_STEPS = 3
+PLAY_STEPS = 4
 
 
 def make_env(params):
@@ -20,19 +18,10 @@ def make_env(params):
     return env
 
 
-def play_func(params, net, cuda, exp_queue, seed):
-    if seed is not None:
-        np.random.seed(seed)
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
-
+def play_func(params, net, cuda, exp_queue):
     env = make_env(params)
-    if seed is not None:
-        env.seed(seed)
 
-    suffix = "" if seed is None else "_seed=%d" % seed
-    writer = SummaryWriter(comment="-" + params['run_name'] + "-05_new_wrappers_steps=%d%s" % (PLAY_STEPS, suffix))
-
+    writer = SummaryWriter(comment="-" + params['run_name'] + "-05_new_wrappers")
     selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = common.EpsilonTracker(selector, params)
     agent = ptan.agent.DQNAgent(net, selector, cuda=cuda)
@@ -63,18 +52,9 @@ if __name__ == "__main__":
     params['batch_size'] *= PLAY_STEPS
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
-    parser.add_argument("--seed", type=int, default=None, help="Random seed to use")
     args = parser.parse_args()
 
-    if args.seed is not None:
-        np.random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        torch.cuda.manual_seed_all(args.seed)
-
     env = make_env(params)
-    if args.seed is not None:
-        env.seed(args.seed)
-
     net = dqn_model.DQN(env.observation_space.shape, env.action_space.n)
     if args.cuda:
         net.cuda()
@@ -85,7 +65,7 @@ if __name__ == "__main__":
     optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
 
     exp_queue = mp.Queue(maxsize=PLAY_STEPS * 2)
-    play_proc = mp.Process(target=play_func, args=(params, net, args.cuda, exp_queue, args.seed))
+    play_proc = mp.Process(target=play_func, args=(params, net, args.cuda, exp_queue))
     play_proc.start()
 
     frame_idx = 0
