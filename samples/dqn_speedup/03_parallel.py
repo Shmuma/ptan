@@ -10,14 +10,14 @@ from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common
 
-PLAY_STEPS = 3
+PLAY_STEPS = 4
 
 
 def play_func(params, net, cuda, exp_queue):
     env = gym.make(params['env_name'])
     env = ptan.common.wrappers.wrap_dqn(env)
 
-    writer = SummaryWriter(comment="-" + params['run_name'] + "-03_parallel_steps=%d" % PLAY_STEPS)
+    writer = SummaryWriter(comment="-" + params['run_name'] + "-03_parallel")
 
     selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = common.EpsilonTracker(selector, params)
