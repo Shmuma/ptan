@@ -2,14 +2,20 @@
 import ptan
 import argparse
 
+import numpy as np
+
+import torch
+import torch.nn as nn
 import torch.optim as optim
 import torch.multiprocessing as mp
+from torch.autograd import Variable
 
 from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common, atari_wrappers
 
 PLAY_STEPS = 4
+QUANT_N = 100
 
 
 def make_env(params):
@@ -46,6 +52,37 @@ def play_func(params, net, cuda, exp_queue):
     exp_queue.put(None)
 
 
+class QRDQN(nn.Module):
+    def __init__(self, input_shape, n_actions):
+        super(QRDQN, self).__init__()
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU()
+        )
+
+        conv_out_size = self._get_conv_out(input_shape)
+        self.fc = nn.Sequential(
+            nn.Linear(conv_out_size, 512),
+            nn.ReLU(),
+            nn.Linear(512, n_actions*QUANT_N)
+        )
+
+    def _get_conv_out(self, shape):
+        o = self.conv(Variable(torch.zeros(1, *shape)))
+        return int(np.prod(o.size()))
+
+    def forward(self, x):
+        batch_size = x.size()[0]
+        fx = x.float() / 256
+        conv_out = self.conv(fx).view(batch_size, -1)
+        return self.fc(conv_out).view(batch_size, -1, QUANT_N)
+
+
 if __name__ == "__main__":
     mp.set_start_method('spawn')
     params = common.HYPERPARAMS['pong']
@@ -55,7 +92,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     env = make_env(params)
-    net = dqn_model.DQN(env.observation_space.shape, env.action_space.n)
+    net = QRDQN(env.observation_space.shape, env.action_space.n)
+    print(net)
     if args.cuda:
         net.cuda()
 
