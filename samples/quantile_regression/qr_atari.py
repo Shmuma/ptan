@@ -12,9 +12,10 @@ from torch.autograd import Variable
 
 from tensorboardX import SummaryWriter
 
-from lib import dqn_model, common, atari_wrappers
+from lib import common, atari_wrappers
 
 PLAY_STEPS = 4
+# quantilles count
 QUANT_N = 100
 
 
@@ -30,7 +31,7 @@ def play_func(params, net, cuda, exp_queue):
     writer = SummaryWriter(comment="-" + params['run_name'] + "-qr")
     selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = common.EpsilonTracker(selector, params)
-    agent = ptan.agent.DQNAgent(net, selector, cuda=cuda)
+    agent = ptan.agent.DQNAgent(lambda x: net.qvals(x), selector, cuda=cuda)
     exp_source = ptan.experience.ExperienceSourceFirstLast(env, agent, gamma=params['gamma'], steps_count=1)
     exp_source_iter = iter(exp_source)
 
@@ -81,6 +82,13 @@ class QRDQN(nn.Module):
         fx = x.float() / 256
         conv_out = self.conv(fx).view(batch_size, -1)
         return self.fc(conv_out).view(batch_size, -1, QUANT_N)
+
+    def qvals(self, x):
+        return self.qvals_from_quant(self(x))
+
+    @classmethod
+    def qvals_from_quant(cls, quant):
+        return quant.mean(dim=2)
 
 
 if __name__ == "__main__":
