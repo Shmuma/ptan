@@ -94,6 +94,7 @@ class QRDQN(nn.Module):
 
 def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     states, actions, rewards, dones, next_states = common.unpack_batch(batch)
+    done_indices = np.where(dones)[0]
     batch_size = len(batch)
 
     states_v = Variable(torch.from_numpy(states))
@@ -111,12 +112,16 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     next_quant_v = tgt_net(next_states_v)
     best_actions_v = tgt_net.qvals_from_quant(next_quant_v).max(1)[1]
     best_next_quant_v = next_quant_v[range(batch_size), best_actions_v.data]
-    best_next_quant_v[done_mask, :] = 0.0
+    if dones.any():
+        dones = best_next_quant_v[done_indices]
+        dones.zero_()
+        print(dones.size())
     best_next_quant_v.volatile = False
 
     # convert rewards to the quantille version
-    rewards_v = Variable(torch.zeros((batch_size, QUANT_N)))
-    rewards_v[:, -1] = rewards
+    rw = np.zeros((batch_size, QUANT_N))
+    rw[:, -1] = rewards
+    rewards_v = Variable(torch.from_numpy(rw))
     if cuda:
         rewards_v = rewards_v.cuda(async=True)
     print(rewards_v)
@@ -164,8 +169,9 @@ if __name__ == "__main__":
         # loss_v = common.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=params['gamma'],
         #                               cuda=args.cuda, cuda_async=True)
         loss_v = calc_loss_qr(batch, net, tgt_net.target_model, gamma=params['gamma'], cuda=args.cuda)
-        loss_v.backward()
-        optimizer.step()
+        if loss_v is not None:
+            loss_v.backward()
+            optimizer.step()
 
         if frame_idx % params['target_net_sync'] < PLAY_STEPS:
             tgt_net.sync()
