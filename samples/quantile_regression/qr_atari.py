@@ -113,8 +113,11 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     best_actions_v = tgt_net.qvals_from_quant(next_quant_v).max(1)[1]
     best_next_quant_v = next_quant_v[range(batch_size), best_actions_v.data]
     if dones.any():
-        dones = best_next_quant_v[done_indices]
-        dones.zero_()
+        done_indices_v = torch.from_numpy(done_indices)
+        if cuda:
+            done_indices_v = done_indices_v.cuda()
+        dones = best_next_quant_v[done_indices_v]
+        dones.data.zero_()
         print(dones.size())
     best_next_quant_v.volatile = False
 
