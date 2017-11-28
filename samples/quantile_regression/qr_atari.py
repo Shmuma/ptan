@@ -166,7 +166,7 @@ def draw_quantilles(frame_idx, batch, net, cuda=False, dir='.'):
             batch_idx, frame_idx, int(dones[batch_idx]), rewards[batch_idx], q_val)
         plt.clf()
 #        plt.subplot(2, 1, 1)
-        plt.plot(np.arange(0.0, 1.0, 1/QUANT_N), quant[batch_idx])
+        plt.plot(np.arange(0.0, 1.0, 1/QUANT_N), list(sorted(quant[batch_idx])))
         plt.title("Inv CDF, q_val=%.3f, done=%d, reward=%.1f" % (
             q_val, int(dones[batch_idx]), rewards[batch_idx]))
 #        plt.subplot(2, 1, 2)
