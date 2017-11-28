@@ -136,7 +136,8 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     huber_loss = mask_small_u * 0.5 * (u ** 2)
     huber_loss = huber_loss + (1 - mask_small_u) * HUBER_K * (abs_u - HUBER_K / 2)
 
-    huber_mul = torch.abs(tau_hat_v.unsqueeze(0) - (u < 0).float())
+#    huber_mul = torch.abs(tau_hat_v.unsqueeze(0) - (u < 0).float())
+    huber_mul = tau_hat_v.unsqueeze(0)
     final_loss = huber_mul * huber_loss
     return final_loss.sum() / QUANT_N
 
@@ -153,10 +154,13 @@ def draw_quantilles(frame_idx, batch, net, cuda=False, dir='.'):
 
     quant_v = net(states_v)[range(batch_size), actions_v.data]
     quant = quant_v.data.cpu().numpy()
+    not_dones_limit = 5
 
     for batch_idx in range(batch_size):
-        if not dones[batch_idx]:
+        if not dones[batch_idx] and not_dones_limit == 0:
            continue
+        if not dones[batch_idx]:
+            not_dones_limit -= 1
         q_val = np.mean(quant[batch_idx])
         suffix = "_%03d_%06d_%d_%.1f_%.4f.png" % (
             batch_idx, frame_idx, int(dones[batch_idx]), rewards[batch_idx], q_val)
@@ -176,7 +180,7 @@ if __name__ == "__main__":
     mp.set_start_method('spawn')
     params = common.HYPERPARAMS['pong']
     params['batch_size'] *= PLAY_STEPS
-    params['epsilon_frames'] = 1000000
+    #params['epsilon_frames'] = 1000000
 #    params['batch_size'] = 8  # For debugging
 #    params['replay_initial'] = 100
     parser = argparse.ArgumentParser()
@@ -234,3 +238,7 @@ if __name__ == "__main__":
 
         if batch_with_dones is not None and frame_idx % 10000 < PLAY_STEPS:
             draw_quantilles(frame_idx, batch_with_dones, net, cuda=args.cuda, dir=img_path)
+
+            # test loss calculation on the done sample
+            done_batch = [t for t in batch_with_dones if t.last_state is None]
+            l = calc_loss_qr(done_batch, net, tgt_net.target_model, gamma=params['gamma'], cuda=args.cuda)
