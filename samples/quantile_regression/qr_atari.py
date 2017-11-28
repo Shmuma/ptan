@@ -14,10 +14,19 @@ from tensorboardX import SummaryWriter
 
 from lib import common, atari_wrappers
 
+import matplotlib as mpl
+mpl.use("Agg")
+import matplotlib.pylab as plt
+
+
 PLAY_STEPS = 4
 # quantilles count
 QUANT_N = 100
 HUBER_K = 1
+
+
+import os
+QUANT_IMG_DIR = "img/"
 
 
 def make_env(params):
@@ -132,15 +141,51 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     return final_loss.sum() / QUANT_N
 
 
+def draw_quantilles(frame_idx, batch, net, cuda=False, dir='.'):
+    states, actions, rewards, dones, next_states = common.unpack_batch(batch)
+    batch_size = len(batch)
+
+    states_v = Variable(torch.from_numpy(states))
+    actions_v = Variable(torch.from_numpy(actions))
+    if cuda:
+        states_v = states_v.cuda(async=True)
+        actions_v = actions_v.cuda(async=True)
+
+    quant_v = net(states_v)[range(batch_size), actions_v.data]
+    quant = quant_v.data.cpu().numpy()
+
+    for batch_idx in range(batch_size):
+        if not dones[batch_idx]:
+           continue
+        q_val = np.mean(quant[batch_idx])
+        suffix = "_%03d_%06d_%d_%.1f_%.4f.png" % (
+            batch_idx, frame_idx, int(dones[batch_idx]), rewards[batch_idx], q_val)
+        plt.clf()
+#        plt.subplot(2, 1, 1)
+        plt.plot(np.arange(0.0, 1.0, 1/QUANT_N), quant[batch_idx])
+        plt.title("Inv CDF, q_val=%.3f, done=%d, reward=%.1f" % (
+            q_val, int(dones[batch_idx]), rewards[batch_idx]))
+#        plt.subplot(2, 1, 2)
+#        plt.plot(1/np.diff(quant[batch_idx])/QUANT_N)
+#        plt.title("Density")
+        plt.savefig(os.path.join(dir, "quant" + suffix))
+    pass
+
+
 if __name__ == "__main__":
     mp.set_start_method('spawn')
     params = common.HYPERPARAMS['pong']
     params['batch_size'] *= PLAY_STEPS
-    # params['batch_size'] = 8  # For debugging
-    # params['replay_initial'] = 100
+    params['epsilon_frames'] = 1000000
+#    params['batch_size'] = 8  # For debugging
+#    params['replay_initial'] = 100
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
+    parser.add_argument("-n", "--name", default='test', help="Run name")
     args = parser.parse_args()
+
+    img_path = os.path.join(QUANT_IMG_DIR, args.name)
+    os.makedirs(img_path, exist_ok=True)
 
     env = make_env(params)
     net = QRDQN(env.observation_space.shape, env.action_space.n)
@@ -186,3 +231,6 @@ if __name__ == "__main__":
 
         if frame_idx % params['target_net_sync'] < PLAY_STEPS:
             tgt_net.sync()
+
+        if batch_with_dones is not None and frame_idx % 10000 < PLAY_STEPS:
+            draw_quantilles(frame_idx, batch_with_dones, net, cuda=args.cuda, dir=img_path)
