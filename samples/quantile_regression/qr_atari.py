@@ -116,8 +116,7 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
         done_indices_v = torch.from_numpy(done_indices)
         if cuda:
             done_indices_v = done_indices_v.cuda()
-        dones = best_next_quant_v[done_indices_v]
-        dones.data.zero_()
+        best_next_quant_v[done_indices_v] = 0.0
     best_next_quant_v.volatile = False
     expected_quant_v = best_next_quant_v * gamma + rewards_v.unsqueeze(-1)
     quant_v = net(states_v)[range(batch_size), actions_v.data]
@@ -137,8 +136,8 @@ if __name__ == "__main__":
     mp.set_start_method('spawn')
     params = common.HYPERPARAMS['pong']
     params['batch_size'] *= PLAY_STEPS
-#    params['batch_size'] = 8  # For debugging
-#    params['replay_initial'] = 100
+    # params['batch_size'] = 8  # For debugging
+    # params['replay_initial'] = 100
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     args = parser.parse_args()
@@ -159,6 +158,7 @@ if __name__ == "__main__":
     play_proc.start()
 
     frame_idx = 0
+    batch_with_dones = None
 
     while play_proc.is_alive():
         frame_idx += PLAY_STEPS
@@ -174,8 +174,11 @@ if __name__ == "__main__":
 
         optimizer.zero_grad()
         batch = buffer.sample(params['batch_size'])
-        # loss_v = common.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=params['gamma'],
-        #                               cuda=args.cuda, cuda_async=True)
+        if batch_with_dones is None:
+            if any(map(lambda t: t.last_state is None, batch)):
+                print("Batch with dones found!")
+                batch_with_dones = batch
+
         loss_v = calc_loss_qr(batch, net, tgt_net.target_model, gamma=params['gamma'], cuda=args.cuda)
         if loss_v is not None:
             loss_v.backward()
