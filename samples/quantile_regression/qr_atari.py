@@ -17,6 +17,7 @@ from lib import common, atari_wrappers
 PLAY_STEPS = 4
 # quantilles count
 QUANT_N = 100
+HUBER_K = 1
 
 
 def make_env(params):
@@ -91,7 +92,6 @@ class QRDQN(nn.Module):
         return quant.mean(dim=2)
 
 
-
 def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     states, actions, rewards, dones, next_states = common.unpack_batch(batch)
     done_indices = np.where(dones)[0]
@@ -100,14 +100,14 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     states_v = Variable(torch.from_numpy(states))
     next_states_v = Variable(torch.from_numpy(next_states), volatile=True)
     actions_v = Variable(torch.from_numpy(actions))
-#    rewards_v = Variable(torch.from_numpy(rewards))
-    done_mask = torch.ByteTensor(dones)
+    rewards_v = Variable(torch.from_numpy(rewards))
+    tau_hat_v = Variable(torch.range(0.0, 1.0 - 1/QUANT_N, 1/QUANT_N)) + 0.5/QUANT_N
     if cuda:
         states_v = states_v.cuda(async=True)
         next_states_v = next_states_v.cuda(async=True)
         actions_v = actions_v.cuda(async=True)
-#        rewards_v = rewards_v.cuda(async=True)
-        done_mask = done_mask.cuda(async=True)
+        rewards_v = rewards_v.cuda(async=True)
+        tau_hat_v = tau_hat_v.cuda(async=True)
 
     next_quant_v = tgt_net(next_states_v)
     best_actions_v = tgt_net.qvals_from_quant(next_quant_v).max(1)[1]
@@ -118,22 +118,27 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
             done_indices_v = done_indices_v.cuda()
         dones = best_next_quant_v[done_indices_v]
         dones.data.zero_()
-        print(dones.size())
     best_next_quant_v.volatile = False
+    expected_quant_v = best_next_quant_v * gamma + rewards_v.unsqueeze(-1)
+    quant_v = net(states_v)[range(batch_size), actions_v.data]
+    u = expected_quant_v - quant_v
 
-    # convert rewards to the quantille version
-    rw = np.zeros((batch_size, QUANT_N))
-    rw[:, -1] = rewards
-    rewards_v = Variable(torch.from_numpy(rw))
-    if cuda:
-        rewards_v = rewards_v.cuda(async=True)
-    print(rewards_v)
+    abs_u = u.abs()
+    mask_small_u = (abs_u <= HUBER_K).float()
+    huber_loss = mask_small_u * 0.5 * (u ** 2)
+    huber_loss = huber_loss + (1 - mask_small_u) * HUBER_K * (abs_u - HUBER_K / 2)
+
+    huber_mul = torch.abs(tau_hat_v.unsqueeze(0) - (u < 0).float())
+    final_loss = huber_mul * huber_loss
+    return final_loss.sum() / QUANT_N
 
 
 if __name__ == "__main__":
     mp.set_start_method('spawn')
     params = common.HYPERPARAMS['pong']
     params['batch_size'] *= PLAY_STEPS
+#    params['batch_size'] = 8  # For debugging
+#    params['replay_initial'] = 100
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     args = parser.parse_args()
