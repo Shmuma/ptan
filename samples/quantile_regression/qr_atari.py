@@ -136,13 +136,13 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     huber_loss = mask_small_u * 0.5 * (u ** 2)
     huber_loss = huber_loss + (1 - mask_small_u) * HUBER_K * (abs_u - HUBER_K / 2)
 
-#    huber_mul = torch.abs(tau_hat_v.unsqueeze(0) - (u < 0).float())
-    huber_mul = tau_hat_v.unsqueeze(0)
+    huber_mul = torch.abs(tau_hat_v.unsqueeze(0) - (u > 0).float())
+#    huber_mul = tau_hat_v.unsqueeze(0)
     final_loss = huber_mul * huber_loss
     return final_loss.sum() / QUANT_N
 
 
-def draw_quantilles(frame_idx, batch, net, cuda=False, dir='.'):
+def draw_quantilles(frame_idx, batch, net, cuda=False, dir='.', prefix=''):
     states, actions, rewards, dones, next_states = common.unpack_batch(batch)
     batch_size = len(batch)
 
@@ -166,13 +166,13 @@ def draw_quantilles(frame_idx, batch, net, cuda=False, dir='.'):
             batch_idx, frame_idx, int(dones[batch_idx]), rewards[batch_idx], q_val)
         plt.clf()
 #        plt.subplot(2, 1, 1)
-        plt.plot(np.arange(0.0, 1.0, 1/QUANT_N), list(sorted(quant[batch_idx])))
+        plt.plot(np.arange(0.0, 1.0, 1/QUANT_N), list(quant[batch_idx]))
         plt.title("Inv CDF, q_val=%.3f, done=%d, reward=%.1f" % (
             q_val, int(dones[batch_idx]), rewards[batch_idx]))
 #        plt.subplot(2, 1, 2)
 #        plt.plot(1/np.diff(quant[batch_idx])/QUANT_N)
 #        plt.title("Density")
-        plt.savefig(os.path.join(dir, "quant" + suffix))
+        plt.savefig(os.path.join(dir, prefix + "quant" + suffix))
     pass
 
 
@@ -181,8 +181,8 @@ if __name__ == "__main__":
     params = common.HYPERPARAMS['pong']
     params['batch_size'] *= PLAY_STEPS
     #params['epsilon_frames'] = 1000000
-#    params['batch_size'] = 8  # For debugging
-#    params['replay_initial'] = 100
+    params['batch_size'] = 8  # For debugging
+    params['replay_initial'] = 100
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     parser.add_argument("-n", "--name", default='test', help="Run name")
@@ -241,4 +241,5 @@ if __name__ == "__main__":
 
             # test loss calculation on the done sample
             done_batch = [t for t in batch_with_dones if t.last_state is None]
+            draw_quantilles(frame_idx, done_batch, net, cuda=args.cuda, dir=img_path, prefix="done_")
             l = calc_loss_qr(done_batch, net, tgt_net.target_model, gamma=params['gamma'], cuda=args.cuda)
