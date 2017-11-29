@@ -247,6 +247,6 @@ if __name__ == "__main__":
             draw_quantilles(frame_idx, batch_with_dones, net, cuda=args.cuda, dir=img_path)
 
             # test loss calculation on the done sample
-            done_batch = [t for t in batch_with_dones if t.last_state is None]
-            draw_quantilles(frame_idx, done_batch, net, cuda=args.cuda, dir=img_path, prefix="done_")
-            l = calc_loss_qr(done_batch, net, tgt_net.target_model, gamma=params['gamma'], cuda=args.cuda)
+            # done_batch = [t for t in batch_with_dones if t.last_state is None]
+            # draw_quantilles(frame_idx, done_batch, net, cuda=args.cuda, dir=img_path, prefix="done_")
+            # l = calc_loss_qr(done_batch, net, tgt_net.target_model, gamma=params['gamma'], cuda=args.cuda)
