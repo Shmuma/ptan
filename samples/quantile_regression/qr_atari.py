@@ -24,6 +24,8 @@ PLAY_STEPS = 4
 QUANT_N = 100
 HUBER_K = 1
 
+DRAW_QUANTILES = True
+
 
 import os
 QUANT_IMG_DIR = "img/"
@@ -143,7 +145,7 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     huber_loss = mask_small_u * 0.5 * (u ** 2)
     huber_loss = huber_loss + (1 - mask_small_u) * HUBER_K * (abs_u - HUBER_K / 2)
 
-    huber_mul = torch.abs(tau_hat_v.unsqueeze(0) - (u < 0).float())
+    huber_mul = torch.abs(tau_hat_v.unsqueeze(0) - (u > 0).float())
 #    huber_mul = tau_hat_v.unsqueeze(0)
     final_loss = huber_mul * huber_loss
     return final_loss.sum() / QUANT_N
@@ -187,6 +189,7 @@ if __name__ == "__main__":
     mp.set_start_method('spawn')
     params = common.HYPERPARAMS['pong']
     params['batch_size'] *= PLAY_STEPS
+    params['learning_rate'] = 5e-5
     #params['epsilon_frames'] = 1000000
     # params['batch_size'] = 8  # For debugging
     # params['replay_initial'] = 100
@@ -243,7 +246,7 @@ if __name__ == "__main__":
         if frame_idx % params['target_net_sync'] < PLAY_STEPS:
             tgt_net.sync()
 
-        if batch_with_dones is not None and frame_idx % 10000 < PLAY_STEPS:
+        if DRAW_QUANTILES and batch_with_dones is not None and frame_idx % 10000 < PLAY_STEPS:
             draw_quantilles(frame_idx, batch_with_dones, net, cuda=args.cuda, dir=img_path)
 
             # test loss calculation on the done sample
