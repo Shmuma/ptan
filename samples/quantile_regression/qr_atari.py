@@ -129,6 +129,13 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     best_next_quant_v.volatile = False
     expected_quant_v = best_next_quant_v * gamma + rewards_v.unsqueeze(-1)
     quant_v = net(states_v)[range(batch_size), actions_v.data]
+
+    _, quant_idx = torch.sort(quant_v, dim=1)
+    tau = []
+    for idx in range(batch_size):
+        tau.append(tau_hat_v[quant_idx[idx]])
+    tau_hat_v = torch.stack(tau)
+
     u = expected_quant_v - quant_v
 
     abs_u = u.abs()
@@ -166,7 +173,7 @@ def draw_quantilles(frame_idx, batch, net, cuda=False, dir='.', prefix=''):
             batch_idx, frame_idx, int(dones[batch_idx]), rewards[batch_idx], q_val)
         plt.clf()
 #        plt.subplot(2, 1, 1)
-        plt.plot(np.arange(0.0, 1.0, 1/QUANT_N), list(quant[batch_idx]))
+        plt.plot(np.arange(0.0, 1.0, 1/QUANT_N), list(sorted(quant[batch_idx])))
         plt.title("Inv CDF, q_val=%.3f, done=%d, reward=%.1f" % (
             q_val, int(dones[batch_idx]), rewards[batch_idx]))
 #        plt.subplot(2, 1, 2)
@@ -181,8 +188,8 @@ if __name__ == "__main__":
     params = common.HYPERPARAMS['pong']
     params['batch_size'] *= PLAY_STEPS
     #params['epsilon_frames'] = 1000000
-    params['batch_size'] = 8  # For debugging
-    params['replay_initial'] = 100
+    # params['batch_size'] = 8  # For debugging
+    # params['replay_initial'] = 100
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     parser.add_argument("-n", "--name", default='test', help="Run name")
