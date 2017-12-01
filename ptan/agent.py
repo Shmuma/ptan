@@ -7,6 +7,8 @@ import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
 
+from . import actions
+
 
 class BaseAgent:
     """
@@ -107,8 +109,9 @@ class PolicyAgent(BaseAgent):
     Policy agent gets action probabilities from the model and samples actions from it
     """
     # TODO: unify code with DQNAgent, as only action selector is differs.
-    def __init__(self, model, cuda=False, apply_softmax=False, preprocessor=default_states_preprocessor):
+    def __init__(self, model, action_selector=actions.ProbabilityActionSelector(), cuda=False, apply_softmax=False, preprocessor=default_states_preprocessor):
         self.model = model
+        self.action_selector = action_selector
         self.cuda = cuda
         self.apply_softmax = apply_softmax
         self.preprocessor = preprocessor
@@ -130,8 +133,6 @@ class PolicyAgent(BaseAgent):
         if self.apply_softmax:
             probs_v = F.softmax(probs_v)
         probs = probs_v.data.cpu().numpy()
-        actions = []
-        for prob in probs:
-            actions.append(np.random.choice(len(prob), p=prob))
+        actions = self.action_selector(probs)
         return np.array(actions), agent_states
 
