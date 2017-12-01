@@ -69,7 +69,7 @@ class ExperienceSource:
                 states[idx] = next_state
                 if is_done:
                     # generate tail of history
-                    while len(history) > 1:
+                    while len(history) >= 1:
                         yield tuple(history)
                         history.popleft()
                     self.total_rewards.append(cur_rewards[idx])
@@ -111,10 +111,11 @@ class ExperienceSourceFirstLast(ExperienceSource):
         assert isinstance(gamma, float)
         super(ExperienceSourceFirstLast, self).__init__(env, agent, steps_count+1, steps_delta)
         self.gamma = gamma
+        self.steps = steps_count
 
     def __iter__(self):
         for exp in super(ExperienceSourceFirstLast, self).__iter__():
-            if exp[-1].done:
+            if exp[-1].done and len(exp) <= self.steps:
                 last_state = None
                 elems = exp
             else:
