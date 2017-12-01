@@ -106,6 +106,7 @@ class PolicyAgent(BaseAgent):
     """
     Policy agent gets action probabilities from the model and samples actions from it
     """
+    # TODO: unify code with DQNAgent, as only action selector is differs.
     def __init__(self, model, cuda=False, apply_softmax=False, preprocessor=default_states_preprocessor):
         self.model = model
         self.cuda = cuda
