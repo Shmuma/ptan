@@ -16,3 +16,10 @@ Convergence is better.
 ## Quantile regression as in paper
 
 Implement quantile regression as in paper: loss is scaled with tau-dirac{u < 0}
+
+2e3e814acb527ce0237d96b75f22f3091468fb47, run Dec02_13-11-56_gpu-pong-qr-qr-paper
+
+## Quantile regression fixed
+
+Implement QR with penalization fixed: loss is scaled with tau - dirac{u > 0}
+
