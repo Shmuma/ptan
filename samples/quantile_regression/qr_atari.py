@@ -145,7 +145,7 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     huber_loss = mask_small_u * 0.5 * (u ** 2)
     huber_loss = huber_loss + (1 - mask_small_u) * HUBER_K * (abs_u - HUBER_K / 2)
 
-    huber_mul = torch.abs(tau_hat_v.unsqueeze(0) - (u < 0).float())
+    huber_mul = torch.abs(tau_hat_v.unsqueeze(0) - (u > 0).float())
 #    huber_mul = tau_hat_v
 #    huber_mul = 1
     final_loss = huber_mul * huber_loss
@@ -176,7 +176,7 @@ def draw_quantilles(frame_idx, batch, net, cuda=False, dir='.', prefix=''):
             batch_idx, frame_idx, int(dones[batch_idx]), rewards[batch_idx], q_val)
         plt.clf()
 #        plt.subplot(2, 1, 1)
-        plt.plot(np.arange(0.0, 1.0, 1/QUANT_N), list(sorted(quant[batch_idx])))
+        plt.plot(np.arange(0.0, 1.0, 1/QUANT_N), list(quant[batch_idx]))
         plt.title("Inv CDF, q_val=%.3f, done=%d, reward=%.1f" % (
             q_val, int(dones[batch_idx]), rewards[batch_idx]))
 #        plt.subplot(2, 1, 2)
