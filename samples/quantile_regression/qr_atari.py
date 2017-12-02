@@ -37,10 +37,10 @@ def make_env(params):
     return env
 
 
-def play_func(params, net, cuda, exp_queue):
+def play_func(params, net, cuda, exp_queue, name):
     env = make_env(params)
 
-    writer = SummaryWriter(comment="-" + params['run_name'] + "-qr")
+    writer = SummaryWriter(comment="-" + params['run_name'] + "-qr-" + name)
     selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = common.EpsilonTracker(selector, params)
     agent = ptan.agent.DQNAgent(lambda x: net.qvals(x), selector, cuda=cuda)
@@ -132,24 +132,25 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     expected_quant_v = best_next_quant_v * gamma + rewards_v.unsqueeze(-1)
     quant_v = net(states_v)[range(batch_size), actions_v.data]
 
-    _, quant_idx = torch.sort(quant_v, dim=1)
-    tau = []
-    for idx in range(batch_size):
-        tau.append(tau_hat_v[quant_idx[idx]])
-    tau_hat_v = torch.stack(tau)
-
-    u = expected_quant_v - quant_v
-
-    abs_u = u.abs()
-    mask_small_u = (abs_u <= HUBER_K).float()
-    huber_loss = mask_small_u * 0.5 * (u ** 2)
-    huber_loss = huber_loss + (1 - mask_small_u) * HUBER_K * (abs_u - HUBER_K / 2)
-
-#    huber_mul = torch.abs(tau_hat_v - (u < 0).float())
-#    huber_mul = tau_hat_v
-    huber_mul = 1
-    final_loss = huber_mul * huber_loss
-    return final_loss.sum() / QUANT_N
+    # _, quant_idx = torch.sort(quant_v, dim=1)
+    # tau = []
+    # for idx in range(batch_size):
+    #     tau.append(tau_hat_v[quant_idx[idx]])
+    # tau_hat_v = torch.stack(tau)
+    return nn.MSELoss()(quant_v, expected_quant_v)
+#
+#     u = expected_quant_v - quant_v
+#
+#     abs_u = u.abs()
+#     mask_small_u = (abs_u <= HUBER_K).float()
+#     huber_loss = mask_small_u * 0.5 * (u ** 2)
+#     huber_loss = huber_loss + (1 - mask_small_u) * HUBER_K * (abs_u - HUBER_K / 2)
+#
+# #    huber_mul = torch.abs(tau_hat_v - (u < 0).float())
+# #    huber_mul = tau_hat_v
+#     huber_mul = 1
+#     final_loss = huber_mul * huber_loss
+#     return final_loss.sum() / QUANT_N
 
 
 def draw_quantilles(frame_idx, batch, net, cuda=False, dir='.', prefix=''):
@@ -214,7 +215,7 @@ if __name__ == "__main__":
     optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
 
     exp_queue = mp.Queue(maxsize=PLAY_STEPS * 2)
-    play_proc = mp.Process(target=play_func, args=(params, net, args.cuda, exp_queue))
+    play_proc = mp.Process(target=play_func, args=(params, net, args.cuda, exp_queue, args.name))
     play_proc.start()
 
     frame_idx = 0
