@@ -23,3 +23,4 @@ Implement quantile regression as in paper: loss is scaled with tau-dirac{u < 0}
 
 Implement QR with penalization fixed: loss is scaled with tau - dirac{u > 0}
 
+e9f811f809cc9498bd69dc56446b4a22a4bbddcc, run Dec02_13-13-51_gpu-pong-qr-qr-fixed
