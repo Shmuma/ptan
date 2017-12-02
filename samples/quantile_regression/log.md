@@ -11,4 +11,8 @@ Converge, but not very fast
 
 c3620ebf8ab81fe5bfbb5502f9419f72614d5bf3, run Dec02_12-46-13_gpu-pong-qr-huber
 
+Convergence is better.
 
+## Quantile regression as in paper
+
+Implement quantile regression as in paper: loss is scaled with tau-dirac{u < 0}
