@@ -137,20 +137,19 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     # for idx in range(batch_size):
     #     tau.append(tau_hat_v[quant_idx[idx]])
     # tau_hat_v = torch.stack(tau)
-    return nn.MSELoss()(quant_v, expected_quant_v)
-#
-#     u = expected_quant_v - quant_v
-#
-#     abs_u = u.abs()
-#     mask_small_u = (abs_u <= HUBER_K).float()
-#     huber_loss = mask_small_u * 0.5 * (u ** 2)
-#     huber_loss = huber_loss + (1 - mask_small_u) * HUBER_K * (abs_u - HUBER_K / 2)
-#
-# #    huber_mul = torch.abs(tau_hat_v - (u < 0).float())
-# #    huber_mul = tau_hat_v
-#     huber_mul = 1
-#     final_loss = huber_mul * huber_loss
-#     return final_loss.sum() / QUANT_N
+
+    u = expected_quant_v - quant_v
+
+    abs_u = u.abs()
+    mask_small_u = (abs_u <= HUBER_K).float()
+    huber_loss = mask_small_u * 0.5 * (u ** 2)
+    huber_loss = huber_loss + (1 - mask_small_u) * HUBER_K * (abs_u - HUBER_K / 2)
+
+#    huber_mul = torch.abs(tau_hat_v - (u < 0).float())
+#    huber_mul = tau_hat_v
+    huber_mul = 1
+    final_loss = huber_mul * huber_loss
+    return final_loss.sum() / QUANT_N
 
 
 def draw_quantilles(frame_idx, batch, net, cuda=False, dir='.', prefix=''):
