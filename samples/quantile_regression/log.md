@@ -39,4 +39,5 @@ No convergence
 
 Try to sort tau_hat by quantile values
 
-1. fixed version, ascending sort: 
+1. fixed version, ascending sort: ea685802aaa002558822f451a477024acbaef1cc
+2. fixed version, descending sort: 

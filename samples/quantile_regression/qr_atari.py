@@ -132,7 +132,7 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     expected_quant_v = best_next_quant_v * gamma + rewards_v.unsqueeze(-1)
     quant_v = net(states_v)[range(batch_size), actions_v.data]
 
-    _, quant_idx = torch.sort(quant_v, dim=1)
+    _, quant_idx = torch.sort(quant_v, dim=1, descending=True)
     tau = []
     for idx in range(batch_size):
         tau.append(tau_hat_v[quant_idx[idx]])
