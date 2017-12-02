@@ -34,3 +34,9 @@ Not converging, tails are huge, Q-values are wrong.
 Try to fix tau_hat shape:
 ed272209e40b92c2ca74086e96b9d494cbfba797, run Dec02_13-21-55_gpu-pong-qr-qr-fixed-2
 No convergence
+
+## Sort of tau_hat
+
+Try to sort tau_hat by quantile values
+
+1. fixed version, ascending sort: 
