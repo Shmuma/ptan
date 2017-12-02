@@ -39,5 +39,10 @@ No convergence
 
 Try to sort tau_hat by quantile values
 
-1. fixed version, ascending sort: ea685802aaa002558822f451a477024acbaef1cc
-2. fixed version, descending sort: 
+1. fixed version, ascending sort: ea685802aaa002558822f451a477024acbaef1cc, Dec02_14-54-23_gpu-pong-qr-sort-fixed-asc
+2. fixed version, descending sort: 82235af9d2ca74228d756ca1c8c5ed0044c6c61b, Dec02_14-55-13_gpu-pong-qr-sort-fixed-desc 
+
+Both are diverging.
+
+1. orig version, ascending sort: 
+2. orig version, descending sort: 

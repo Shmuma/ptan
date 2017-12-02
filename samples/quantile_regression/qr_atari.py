@@ -145,7 +145,7 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     huber_loss = mask_small_u * 0.5 * (u ** 2)
     huber_loss = huber_loss + (1 - mask_small_u) * HUBER_K * (abs_u - HUBER_K / 2)
 
-    huber_mul = torch.abs(tau_hat_v - (u > 0).float())
+    huber_mul = torch.abs(tau_hat_v - (u < 0).float())
 #    huber_mul = tau_hat_v
 #    huber_mul = 1
     final_loss = huber_mul * huber_loss
