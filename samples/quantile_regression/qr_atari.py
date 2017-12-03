@@ -21,7 +21,7 @@ import matplotlib.pylab as plt
 
 PLAY_STEPS = 4
 # quantilles count
-QUANT_N = 100
+QUANT_N = 51
 HUBER_K = 1
 
 DRAW_QUANTILES = True
@@ -139,11 +139,13 @@ def calc_loss_qr(batch, net, tgt_net, gamma, cuda=False):
     tau_hat_v = torch.stack(tau)
 
     u = expected_quant_v - quant_v
-
     abs_u = u.abs()
-    mask_small_u = (abs_u <= HUBER_K).float()
-    huber_loss = mask_small_u * 0.5 * (u ** 2)
-    huber_loss = huber_loss + (1 - mask_small_u) * HUBER_K * (abs_u - HUBER_K / 2)
+    clamp_u = torch.clamp(abs_u, 0.0, HUBER_K)
+    huber_loss = HUBER_K * (abs_u - clamp_u) + 0.5 * clamp_u ** 2
+
+    # mask_small_u = (abs_u <= HUBER_K).float()
+    # huber_loss = mask_small_u * 0.5 * (u ** 2)
+    # huber_loss = huber_loss + (1 - mask_small_u) * HUBER_K * (abs_u - HUBER_K / 2)
 
     huber_mul = torch.abs(tau_hat_v - (u < 0).float())
 #    huber_mul = tau_hat_v
