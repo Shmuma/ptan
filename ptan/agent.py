@@ -44,7 +44,7 @@ def default_states_preprocessor(states):
     if len(states) == 1:
         np_states = np.expand_dims(states[0], 0)
     else:
-        np_states = np.array(states)
+        np_states = np.array([np.array(s, copy=False) for s in states], copy=False)
     return np_states
 
 
