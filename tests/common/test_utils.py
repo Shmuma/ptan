@@ -174,3 +174,18 @@ class TestTBMeanTracker(TestCase):
             tracker.track("p1", t, iter_index=1)
             tracker.track("p1", t, iter_index=2)
             self.assertEquals(writer.buffer, [("p1", 1.0, 2)])
+
+    def test_tensor_large(self):
+        writer = TestTBWriter()
+
+        with TBMeanTracker(writer, batch_size=2) as tracker:
+            t = torch.LongTensor([1, 2, 3])
+            tracker.track("p1", t, iter_index=1)
+            tracker.track("p1", t, iter_index=2)
+            self.assertEquals(writer.buffer, [("p1", 2.0, 2)])
+
+    def test_as_float(self):
+        self.assertAlmostEqual(1.0, TBMeanTracker._as_float(1.0))
+        self.assertAlmostEqual(0.33333333333333, TBMeanTracker._as_float(1.0/3.0))
+        self.assertAlmostEqual(2.0, TBMeanTracker._as_float(torch.LongTensor([1, 2, 3])))
+        self.assertAlmostEqual(0.6666666666666, TBMeanTracker._as_float(torch.LongTensor([1, 1, 0])))
