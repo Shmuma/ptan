@@ -189,3 +189,5 @@ class TestTBMeanTracker(TestCase):
         self.assertAlmostEqual(0.33333333333333, TBMeanTracker._as_float(1.0/3.0))
         self.assertAlmostEqual(2.0, TBMeanTracker._as_float(torch.LongTensor([1, 2, 3])))
         self.assertAlmostEqual(0.6666666666666, TBMeanTracker._as_float(torch.LongTensor([1, 1, 0])))
+        self.assertAlmostEqual(1.0, TBMeanTracker._as_float(np.array([1.0, 1.0, 1.0])))
+        self.assertAlmostEqual(1.0, TBMeanTracker._as_float(np.sqrt(np.array([1.0], dtype=np.float32)[0])))

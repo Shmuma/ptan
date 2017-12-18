@@ -303,6 +303,7 @@ class TBMeanTracker:
 
     @staticmethod
     def _as_float(value):
+        assert isinstance(value, (float, int, np.ndarray, np.generic, torch.autograd.Variable)) or torch.is_tensor(value)
         tensor_val = None
         if isinstance(value, torch.autograd.Variable):
             tensor_val = value.data
@@ -311,12 +312,13 @@ class TBMeanTracker:
 
         if tensor_val is not None:
             return tensor_val.float().mean()
+        elif isinstance(value, np.ndarray):
+            return float(np.mean(value))
         else:
             return float(value)
 
     def track(self, param_name, value, iter_index):
         assert isinstance(param_name, str)
-        assert isinstance(value, (float, int, torch.autograd.Variable)) or torch.is_tensor(value)
         assert isinstance(iter_index, int)
 
         data = self._batches[param_name]
