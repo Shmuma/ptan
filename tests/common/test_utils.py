@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
-from ptan.common.utils import SMAQueue, SpeedMonitor, WeightedMSELoss
+from ptan.common.utils import SMAQueue, SpeedMonitor, WeightedMSELoss, TBMeanTracker
 
 
 
@@ -118,3 +118,59 @@ class TestWeightedMSELoss(TestCase):
 
         np.testing.assert_almost_equal(self.get_loss(loss, [1.0, 1.0, 1.0], [0.0, 2.0, 0.0], [1.0, 3.0, 2.0]), [6.0])
         np.testing.assert_almost_equal(self.get_loss(loss, [1.0, 1.0, 1.0], [1.0, 5.0, 1.0], [1.0, 1.0/4, 1.0]), [4.0])
+
+
+class TestTBWriter:
+    def __init__(self):
+        self.closed = False
+        self.buffer = []
+
+    def reset(self):
+        self.closed = False
+        self.buffer = []
+
+    def close(self):
+        self.closed = True
+
+    def add_scalar(self, name, value, iter_idx):
+        assert not self.closed
+        self.buffer.append((name, value, iter_idx))
+
+
+class TestTBMeanTracker(TestCase):
+    def test_simple(self):
+        writer = TestTBWriter()
+        with TBMeanTracker(writer, batch_size=4) as tracker:
+            tracker.track("param_1", value=10, iter_index=1)
+            self.assertEquals(writer.buffer, [])
+            tracker.track("param_1", value=10, iter_index=2)
+            self.assertEquals(writer.buffer, [])
+            tracker.track("param_1", value=10, iter_index=3)
+            self.assertEquals(writer.buffer, [])
+            tracker.track("param_1", value=10, iter_index=4)
+            self.assertEquals(writer.buffer, [("param_1", 10.0, 4)])
+            writer.reset()
+
+            tracker.track("param_1", value=1.0, iter_index=1)
+            self.assertEquals(writer.buffer, [])
+            tracker.track("param_1", value=2.0, iter_index=2)
+            self.assertEquals(writer.buffer, [])
+            tracker.track("param_1", value=-3.0, iter_index=3)
+            self.assertEquals(writer.buffer, [])
+            tracker.track("param_1", value=1.0, iter_index=4)
+            self.assertEquals(writer.buffer, [("param_1", (1.0 + 2.0 - 3.0 + 1.0) / 4, 4)])
+            writer.reset()
+
+
+        with self.assertRaises(AssertionError):
+            writer.add_scalar("bla", 1.0, 10)
+        self.assertTrue(writer.closed)
+
+    def test_tensor(self):
+        writer = TestTBWriter()
+
+        with TBMeanTracker(writer, batch_size=2) as tracker:
+            t = torch.LongTensor([1])
+            tracker.track("p1", t, iter_index=1)
+            tracker.track("p1", t, iter_index=2)
+            self.assertEquals(writer.buffer, [("p1", 1.0, 2)])
