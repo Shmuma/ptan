@@ -117,3 +117,13 @@ class TestExperienceReplayBuffer(TestCase):
 
         b = buf.sample(20)
         self.assertEqual(10, len(b))
+
+
+class TestUtils(TestCase):
+    def test_group_list(self):
+        r = experience._group_list([1, 2, 3], [3])
+        self.assertEqual(r, [[1, 2, 3]])
+        r = experience._group_list([1, 2, 3], [1, 1, 1])
+        self.assertEqual(r, [[1], [2], [3]])
+        r = experience._group_list([1, 2, 3], [1, 2])
+        self.assertEqual(r, [[1], [2, 3]])
