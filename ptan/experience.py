@@ -44,11 +44,10 @@ class ExperienceSource:
         self.steps_delta = steps_delta
         self.total_rewards = []
         self.total_steps = []
-        self.agent_states = [agent.initial_state() for _ in self.pool]
         self.vectorized = vectorized
 
     def __iter__(self):
-        states, histories, cur_rewards, cur_steps = [], [], [], []
+        states, agent_states, histories, cur_rewards, cur_steps = [], [], [], [], []
         env_lens = []
         for env in self.pool:
             obs = env.reset()
@@ -66,6 +65,7 @@ class ExperienceSource:
                 histories.append(deque(maxlen=self.steps_count))
                 cur_rewards.append(0.0)
                 cur_steps.append(0)
+                agent_states.append(self.agent.initial_state())
 
         iter_idx = 0
         while True:
@@ -79,11 +79,11 @@ class ExperienceSource:
                     states_input.append(state)
                     states_indices.append(idx)
             if states_input:
-                states_actions, new_agent_states = self.agent(states, self.agent_states)
+                states_actions, new_agent_states = self.agent(states_input, agent_states)
                 for idx, action in enumerate(states_actions):
                     g_idx = states_indices[idx]
                     actions[g_idx] = action
-                    self.agent_states[g_idx] = new_agent_states[idx]
+                    agent_states[g_idx] = new_agent_states[idx]
             grouped_actions = _group_list(actions, env_lens)
 
             global_ofs = 0
@@ -117,7 +117,7 @@ class ExperienceSource:
                         cur_steps[idx] = 0
                         # vectorized envs are reset automatically
                         states[idx] = env.reset() if not self.vectorized else None
-                        self.agent_states[idx] = self.agent.initial_state()
+                        agent_states[idx] = self.agent.initial_state()
                         history.clear()
                 global_ofs += len(action_n)
             iter_idx += 1
