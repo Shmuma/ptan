@@ -35,21 +35,28 @@ class BaseAgent:
         raise NotImplementedError
 
 
-def default_states_preprocessor(states):
+def default_states_preprocessor(states, cuda=False, device_id=None):
     """
-    Convert list of states into numpy array
+    Convert list of states into the form suitable for model. By default we assume Variable
     :param states: list of numpy arrays with states
-    :return: numpy array with the states
+    :return: Variable
     """
     if len(states) == 1:
         np_states = np.expand_dims(states[0], 0)
     else:
         np_states = np.array([np.array(s, copy=False) for s in states], copy=False)
-    return np_states
+    v = Variable(torch.from_numpy(np_states))
+    if cuda:
+        v = v.cuda(device_id=device_id)
+    return v
 
 
-def float32_preprocessor(states):
-    return np.array(states, dtype=np.float32)
+def float32_preprocessor(states, cuda=False, device_id=None):
+    np_states = np.array(states, dtype=np.float32)
+    v = Variable(torch.from_numpy(np_states))
+    if cuda:
+        v = v.cuda(device_id=device_id)
+    return v
 
 
 class DQNAgent(BaseAgent):
@@ -69,11 +76,8 @@ class DQNAgent(BaseAgent):
         if agent_states is None:
             agent_states = [None] * states.shape[0]
         if self.preprocessor is not None:
-            states = self.preprocessor(states)
-        v = Variable(torch.from_numpy(states))
-        if self.cuda:
-            v = v.cuda(device_id=self.cuda_device_id)
-        q_v = self.dqn_model(v)
+            states = self.preprocessor(states, cuda=self.cuda, device_id=self.cuda_device_id)
+        q_v = self.dqn_model(states)
         q = q_v.data.cpu().numpy()
         actions = self.action_selector(q)
         return actions, agent_states
@@ -109,10 +113,12 @@ class PolicyAgent(BaseAgent):
     Policy agent gets action probabilities from the model and samples actions from it
     """
     # TODO: unify code with DQNAgent, as only action selector is differs.
-    def __init__(self, model, action_selector=actions.ProbabilityActionSelector(), cuda=False, apply_softmax=False, preprocessor=default_states_preprocessor):
+    def __init__(self, model, action_selector=actions.ProbabilityActionSelector(), cuda=False,
+                 cuda_device_id=None, apply_softmax=False, preprocessor=default_states_preprocessor):
         self.model = model
         self.action_selector = action_selector
         self.cuda = cuda
+        self.cuda_device_id = cuda_device_id
         self.apply_softmax = apply_softmax
         self.preprocessor = preprocessor
 
@@ -125,11 +131,8 @@ class PolicyAgent(BaseAgent):
         if agent_states is None:
             agent_states = [None] * states.shape[0]
         if self.preprocessor is not None:
-            states = self.preprocessor(states)
-        v = Variable(torch.from_numpy(states))
-        if self.cuda:
-            v = v.cuda()
-        probs_v = self.model(v)
+            states = self.preprocessor(states, cuda=self.cuda, device_id=self.cuda_device_id)
+        probs_v = self.model(states)
         if self.apply_softmax:
             probs_v = F.softmax(probs_v)
         probs = probs_v.data.cpu().numpy()
