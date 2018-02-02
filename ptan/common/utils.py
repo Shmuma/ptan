@@ -1,3 +1,4 @@
+import sys
 import time
 import operator
 from datetime import timedelta
@@ -327,3 +328,35 @@ class TBMeanTracker:
         if len(data) >= self.batch_size:
             self.writer.add_scalar(param_name, np.mean(data), iter_index)
             data.clear()
+
+
+class RewardTracker:
+    def __init__(self, writer):
+        self.writer = writer
+
+    def __enter__(self):
+        self.ts = time.time()
+        self.ts_frame = 0
+        self.total_rewards = []
+        return self
+
+    def __exit__(self, *args):
+        self.writer.close()
+
+    def reward(self, reward, frame, epsilon=None):
+        self.total_rewards.append(reward)
+        speed = (frame - self.ts_frame) / (time.time() - self.ts)
+        self.ts_frame = frame
+        self.ts = time.time()
+        mean_reward = np.mean(self.total_rewards[-100:])
+        epsilon_str = "" if epsilon is None else ", eps %.2f" % epsilon
+        print("%d: done %d episodes, mean reward %.3f, speed %.2f f/s%s" % (
+            frame, len(self.total_rewards), mean_reward, speed, epsilon_str
+        ))
+        sys.stdout.flush()
+        if epsilon is not None:
+            self.writer.add_scalar("epsilon", epsilon, frame)
+        self.writer.add_scalar("speed", speed, frame)
+        self.writer.add_scalar("reward_100", mean_reward, frame)
+        self.writer.add_scalar("reward", reward, frame)
+        return mean_reward if len(self.total_rewards) > 30 else None
