@@ -35,7 +35,7 @@ class BaseAgent:
         raise NotImplementedError
 
 
-def default_states_preprocessor(states, cuda=False, device_id=None):
+def default_states_preprocessor(states, cuda=False, device_id=None, volatile=False):
     """
     Convert list of states into the form suitable for model. By default we assume Variable
     :param states: list of numpy arrays with states
@@ -45,15 +45,15 @@ def default_states_preprocessor(states, cuda=False, device_id=None):
         np_states = np.expand_dims(states[0], 0)
     else:
         np_states = np.array([np.array(s, copy=False) for s in states], copy=False)
-    v = Variable(torch.from_numpy(np_states))
+    v = Variable(torch.from_numpy(np_states), volatile=volatile)
     if cuda:
         v = v.cuda(device_id=device_id)
     return v
 
 
-def float32_preprocessor(states, cuda=False, device_id=None):
+def float32_preprocessor(states, cuda=False, device_id=None, volatile=False):
     np_states = np.array(states, dtype=np.float32)
-    v = Variable(torch.from_numpy(np_states))
+    v = Variable(torch.from_numpy(np_states), volatile=volatile)
     if cuda:
         v = v.cuda(device_id=device_id)
     return v
