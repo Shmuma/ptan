@@ -74,7 +74,7 @@ class DQNAgent(BaseAgent):
 
     def __call__(self, states, agent_states=None):
         if agent_states is None:
-            agent_states = [None] * states.shape[0]
+            agent_states = [None] * len(states)
         if self.preprocessor is not None:
             states = self.preprocessor(states, cuda=self.cuda, device_id=self.cuda_device_id)
         q_v = self.dqn_model(states)
@@ -129,7 +129,7 @@ class PolicyAgent(BaseAgent):
         :return: list of actions
         """
         if agent_states is None:
-            agent_states = [None] * states.shape[0]
+            agent_states = [None] * len(states)
         if self.preprocessor is not None:
             states = self.preprocessor(states, cuda=self.cuda, device_id=self.cuda_device_id)
         probs_v = self.model(states)
