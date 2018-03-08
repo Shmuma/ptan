@@ -139,3 +139,33 @@ class PolicyAgent(BaseAgent):
         actions = self.action_selector(probs)
         return np.array(actions), agent_states
 
+
+class ActorCriticAgent(BaseAgent):
+    """
+    Policy agent which returns policy and value tensors from observations. Value are stored in agent's state
+    and could be reused for rollouts calculations by ExperienceSource.
+    """
+    def __init__(self, model, action_selector=actions.ProbabilityActionSelector(), cuda=False,
+                 cuda_device_id=None, apply_softmax=False, preprocessor=default_states_preprocessor):
+        self.model = model
+        self.action_selector = action_selector
+        self.cuda = cuda
+        self.cuda_device_id = cuda_device_id
+        self.apply_softmax = apply_softmax
+        self.preprocessor = preprocessor
+
+    def __call__(self, states, agent_states=None):
+        """
+        Return actions from given list of states
+        :param states: list of states
+        :return: list of actions
+        """
+        if self.preprocessor is not None:
+            states = self.preprocessor(states, cuda=self.cuda, device_id=self.cuda_device_id)
+        probs_v, values_v = self.model(states)
+        if self.apply_softmax:
+            probs_v = F.softmax(probs_v)
+        probs = probs_v.data.cpu().numpy()
+        actions = self.action_selector(probs)
+        agent_states = values_v.data.squeeze().cpu().numpy().tolist()
+        return np.array(actions), agent_states

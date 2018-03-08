@@ -185,6 +185,58 @@ class ExperienceSourceFirstLast(ExperienceSource):
                                       reward=total_reward, last_state=last_state)
 
 
+class ExperienceSourceRollouts:
+    """
+    N-step rollout experience source following A3C rollouts scheme. Have to be used with agent, 
+    keeping the value in its state (for example, agent.ActorCriticAgent).
+    
+    Yields batches of num_envs * n_steps samples with the following arrays:
+    1. observations
+    2. actions
+    3. discounted rewards, with values approximation
+    4. values
+    """
+    def __init__(self, env, agent, steps_count=5):
+        """
+        Constructs the rollout experience source
+        :param env: environment or list of environments to be used
+        :param agent: callable to convert batch of states into actions
+        :param steps_count: how many steps to perform rollouts 
+        """
+        assert isinstance(env, (gym.Env, list, tuple))
+        assert isinstance(agent, BaseAgent)
+        assert isinstance(steps_count, int)
+        assert steps_count >= 1
+
+        if isinstance(env, (list, tuple)):
+            self.pool = env
+        else:
+            self.pool = [env]
+        self.agent = agent
+        self.steps_count = steps_count
+        self.total_rewards = []
+        self.total_steps = []
+
+    def __iter__(self):
+        pool_size = len(self.pool)
+        states = [e.reset() for e in self.pool]
+        agent_states = None
+        mb_states, mb_dones, mb_values, mb_rewards = [], [], [], []
+        mb_states.append(states)
+
+        actions, agent_states = self.agent(states, agent_states)
+        rewards = []
+        dones = []
+        states = []
+        for env_idx, (e, action) in enumerate(zip(self.pool, actions)):
+            o, r, done, _ = e.step(action)
+            if done:
+                o = e.reset()
+            states.append(o)
+            dones.append(done)
+            rewards.append(r)
+
+
 class ExperienceSourceBuffer:
     """
     The same as ExperienceSource, but takes episodes from the buffer
