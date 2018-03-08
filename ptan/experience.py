@@ -139,9 +139,9 @@ class ExperienceSource:
 def _group_list(items, lens):
     """
     Unflat the list of items by lens
-    :param items: list of items 
+    :param items: list of items
     :param lens: list of integers
-    :return: list of list of items grouped by lengths 
+    :return: list of list of items grouped by lengths
     """
     res = []
     cur_ofs = 0
@@ -187,9 +187,9 @@ class ExperienceSourceFirstLast(ExperienceSource):
 
 class ExperienceSourceRollouts:
     """
-    N-step rollout experience source following A3C rollouts scheme. Have to be used with agent, 
+    N-step rollout experience source following A3C rollouts scheme. Have to be used with agent,
     keeping the value in its state (for example, agent.ActorCriticAgent).
-    
+
     Yields batches of num_envs * n_steps samples with the following arrays:
     1. observations
     2. actions
@@ -201,7 +201,7 @@ class ExperienceSourceRollouts:
         Constructs the rollout experience source
         :param env: environment or list of environments to be used
         :param agent: callable to convert batch of states into actions
-        :param steps_count: how many steps to perform rollouts 
+        :param steps_count: how many steps to perform rollouts
         """
         assert isinstance(env, (gym.Env, list, tuple))
         assert isinstance(agent, BaseAgent)
@@ -222,19 +222,28 @@ class ExperienceSourceRollouts:
         states = [e.reset() for e in self.pool]
         agent_states = None
         mb_states, mb_dones, mb_values, mb_rewards = [], [], [], []
-        mb_states.append(states)
 
-        actions, agent_states = self.agent(states, agent_states)
-        rewards = []
-        dones = []
-        states = []
-        for env_idx, (e, action) in enumerate(zip(self.pool, actions)):
-            o, r, done, _ = e.step(action)
-            if done:
-                o = e.reset()
-            states.append(o)
-            dones.append(done)
-            rewards.append(r)
+        while True:
+            mb_states.append(states)
+            actions, agent_states = self.agent(states, agent_states)
+            rewards = []
+            dones = []
+            states = []
+            for env_idx, (e, action) in enumerate(zip(self.pool, actions)):
+                o, r, done, _ = e.step(action)
+                if done:
+                    o = e.reset()
+                states.append(o)
+                dones.append(done)
+                rewards.append(r)
+            mb_dones.append(dones)
+            mb_values.append(agent_states)
+            mb_rewards.append(rewards)
+
+            # we need an extra step to get values approximation
+            if len(states) == self.steps_count+1:
+                # batch is ready, calculate rollouts and yield it
+                pass
 
 
 class ExperienceSourceBuffer:
