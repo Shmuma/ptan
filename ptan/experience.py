@@ -273,10 +273,11 @@ class ExperienceSourceRollouts:
                 # calculate rollout rewards
                 for env_idx, (env_rewards, env_dones, last_value) in enumerate(zip(mb_rewards, mb_dones, agent_states)):
                     env_rewards = env_rewards.tolist()
+                    env_dones = env_dones.tolist()
                     if not env_dones[-1]:
-                        env_rewards = discount_with_dones(env_rewards + [last_value], dones[1:] + [False], self.gamma)[:-1]
+                        env_rewards = discount_with_dones(env_rewards + [last_value], env_dones + [False], self.gamma)[:-1]
                     else:
-                        env_rewards = discount_with_dones(env_rewards, dones[1:], self.gamma)
+                        env_rewards = discount_with_dones(env_rewards, env_dones, self.gamma)
                     mb_rewards[env_idx] = env_rewards
                 yield res_states, mb_rewards.flatten(), mb_actions.flatten(), mb_values.flatten()
                 step_idx = 0
