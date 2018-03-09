@@ -230,23 +230,22 @@ class ExperienceSourceRollouts:
 
     def __iter__(self):
         pool_size = len(self.pool)
-        mb_states = []
+        states = [np.array(e.reset()) for e in self.pool]
+        mb_states = np.zeros((pool_size, self.steps_count) + states[0].shape, dtype=states[0].dtype)
         mb_rewards = np.zeros((pool_size, self.steps_count), dtype=np.float32)
         mb_values = np.zeros((pool_size, self.steps_count), dtype=np.float32)
         mb_actions = np.zeros((pool_size, self.steps_count), dtype=np.int64)
         mb_dones = np.zeros((pool_size, self.steps_count), dtype=np.bool)
-        states = [e.reset() for e in self.pool]
         total_rewards = [0.0] * pool_size
         total_steps = [0] * pool_size
         agent_states = None
         step_idx = 0
 
         while True:
-            mb_states.append(states)
             actions, agent_states = self.agent(states, agent_states)
             rewards = []
             dones = []
-            states = []
+            new_states = []
             for env_idx, (e, action) in enumerate(zip(self.pool, actions)):
                 o, r, done, _ = e.step(action)
                 total_rewards[env_idx] += r
@@ -257,19 +256,11 @@ class ExperienceSourceRollouts:
                     self.total_steps.append(total_steps[env_idx])
                     total_rewards[env_idx] = 0.0
                     total_steps[env_idx] = 0
-                states.append(o)
+                new_states.append(np.array(o))
                 dones.append(done)
                 rewards.append(r)
             # we need an extra step to get values approximation for rollouts
             if step_idx == self.steps_count:
-                # prepare batch
-                # states are returned in flattened transposed list (env, step, *)
-                res_states = [
-                    mb_states[step][env_idx]
-                    for env_idx in range(pool_size)
-                    for step in range(self.steps_count)
-                ]
-                mb_states = []
                 # calculate rollout rewards
                 for env_idx, (env_rewards, env_dones, last_value) in enumerate(zip(mb_rewards, mb_dones, agent_states)):
                     env_rewards = env_rewards.tolist()
@@ -279,13 +270,15 @@ class ExperienceSourceRollouts:
                     else:
                         env_rewards = discount_with_dones(env_rewards, env_dones, self.gamma)
                     mb_rewards[env_idx] = env_rewards
-                yield res_states, mb_rewards.flatten(), mb_actions.flatten(), mb_values.flatten()
+                yield mb_states.reshape((-1,) + mb_states.shape[2:]), mb_rewards.flatten(), mb_actions.flatten(), mb_values.flatten()
                 step_idx = 0
+            mb_states[:, step_idx] = states
             mb_rewards[:, step_idx] = rewards
             mb_values[:, step_idx] = agent_states
             mb_actions[:, step_idx] = actions
             mb_dones[:, step_idx] = dones
             step_idx += 1
+            states = new_states
 
     def pop_total_rewards(self):
         r = self.total_rewards
