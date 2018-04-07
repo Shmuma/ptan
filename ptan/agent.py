@@ -47,7 +47,7 @@ def default_states_preprocessor(states, cuda=False, device_id=None, volatile=Fal
         np_states = np.array([np.array(s, copy=False) for s in states], copy=False)
     v = Variable(torch.from_numpy(np_states), volatile=volatile)
     if cuda:
-        v = v.cuda(device_id=device_id)
+        v = v.cuda(device=device_id)
     return v
 
 
@@ -55,7 +55,7 @@ def float32_preprocessor(states, cuda=False, device_id=None, volatile=False):
     np_states = np.array(states, dtype=np.float32)
     v = Variable(torch.from_numpy(np_states), volatile=volatile)
     if cuda:
-        v = v.cuda(device_id=device_id)
+        v = v.cuda(device=device_id)
     return v
 
 
