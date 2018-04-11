@@ -134,7 +134,7 @@ class PolicyAgent(BaseAgent):
             states = self.preprocessor(states, cuda=self.cuda, device_id=self.cuda_device_id)
         probs_v = self.model(states)
         if self.apply_softmax:
-            probs_v = F.softmax(probs_v)
+            probs_v = F.softmax(probs_v, dim=1)
         probs = probs_v.data.cpu().numpy()
         actions = self.action_selector(probs)
         return np.array(actions), agent_states
@@ -164,7 +164,7 @@ class ActorCriticAgent(BaseAgent):
             states = self.preprocessor(states, cuda=self.cuda, device_id=self.cuda_device_id)
         probs_v, values_v = self.model(states)
         if self.apply_softmax:
-            probs_v = F.softmax(probs_v)
+            probs_v = F.softmax(probs_v, dim=1)
         probs = probs_v.data.cpu().numpy()
         actions = self.action_selector(probs)
         agent_states = values_v.data.squeeze().cpu().numpy().tolist()
