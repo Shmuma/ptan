@@ -11,4 +11,5 @@ setuptools.setup(
     license='GPL-v3',
     description="PyTorch reinforcement learning framework",
     version="0.2",
+    packages=setuptools.find_packages(),
 )
