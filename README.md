@@ -2,8 +2,8 @@
 # PTAN
 
 PTAN stands for PyTorch AgentNet -- reimplementation of
-(AgentNet)[https://github.com/yandexdataschool/AgentNet] library for
-(PyTorch)[http://pytorch.org/]
+[AgentNet](https://github.com/yandexdataschool/AgentNet) library for
+[PyTorch](http://pytorch.org/)
 
 ## Installation
 
