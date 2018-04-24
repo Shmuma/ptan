@@ -11,7 +11,7 @@ PTAN stands for PyTorch AgentNet -- reimplementation of
 python setup.py install
 ```
 
-### Note for (Anaconda Python)[https://anaconda.org/anaconda/python] users
+### Note for [Anaconda Python](https://anaconda.org/anaconda/python) users
 
 To run some of the samples, you will need these modules:
 ```bash
