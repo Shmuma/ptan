@@ -5,7 +5,6 @@ import copy
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.autograd import Variable
 
 from . import actions
 
@@ -35,7 +34,7 @@ class BaseAgent:
         raise NotImplementedError
 
 
-def default_states_preprocessor(states, cuda=False, device_id=None, volatile=False):
+def default_states_preprocessor(states):
     """
     Convert list of states into the form suitable for model. By default we assume Variable
     :param states: list of numpy arrays with states
@@ -45,18 +44,12 @@ def default_states_preprocessor(states, cuda=False, device_id=None, volatile=Fal
         np_states = np.expand_dims(states[0], 0)
     else:
         np_states = np.array([np.array(s, copy=False) for s in states], copy=False)
-    v = Variable(torch.from_numpy(np_states), volatile=volatile)
-    if cuda:
-        v = v.cuda(device=device_id)
-    return v
+    return torch.tensor(np_states)
 
 
-def float32_preprocessor(states, cuda=False, device_id=None, volatile=False):
+def float32_preprocessor(states):
     np_states = np.array(states, dtype=np.float32)
-    v = Variable(torch.from_numpy(np_states), volatile=volatile)
-    if cuda:
-        v = v.cuda(device=device_id)
-    return v
+    return torch.tensor(np_states)
 
 
 class DQNAgent(BaseAgent):
@@ -64,19 +57,17 @@ class DQNAgent(BaseAgent):
     DQNAgent is a memoryless DQN agent which calculates Q values
     from the observations and  converts them into the actions using action_selector
     """
-    def __init__(self, dqn_model, action_selector, cuda=False, preprocessor=default_states_preprocessor,
-                 cuda_device_id=None):
+    def __init__(self, dqn_model, action_selector, device="cpu", preprocessor=default_states_preprocessor):
         self.dqn_model = dqn_model
         self.action_selector = action_selector
         self.preprocessor = preprocessor
-        self.cuda = cuda
-        self.cuda_device_id = cuda_device_id
+        self.device = device
 
     def __call__(self, states, agent_states=None):
         if agent_states is None:
             agent_states = [None] * len(states)
         if self.preprocessor is not None:
-            states = self.preprocessor(states, cuda=self.cuda, device_id=self.cuda_device_id)
+            states = self.preprocessor(states).to(self.device)
         q_v = self.dqn_model(states)
         q = q_v.data.cpu().numpy()
         actions = self.action_selector(q)
@@ -113,12 +104,11 @@ class PolicyAgent(BaseAgent):
     Policy agent gets action probabilities from the model and samples actions from it
     """
     # TODO: unify code with DQNAgent, as only action selector is differs.
-    def __init__(self, model, action_selector=actions.ProbabilityActionSelector(), cuda=False,
-                 cuda_device_id=None, apply_softmax=False, preprocessor=default_states_preprocessor):
+    def __init__(self, model, action_selector=actions.ProbabilityActionSelector(), device="cpu",
+                 apply_softmax=False, preprocessor=default_states_preprocessor):
         self.model = model
         self.action_selector = action_selector
-        self.cuda = cuda
-        self.cuda_device_id = cuda_device_id
+        self.device = device
         self.apply_softmax = apply_softmax
         self.preprocessor = preprocessor
 
@@ -131,7 +121,7 @@ class PolicyAgent(BaseAgent):
         if agent_states is None:
             agent_states = [None] * len(states)
         if self.preprocessor is not None:
-            states = self.preprocessor(states, cuda=self.cuda, device_id=self.cuda_device_id)
+            states = self.preprocessor(states).to(self.device)
         probs_v = self.model(states)
         if self.apply_softmax:
             probs_v = F.softmax(probs_v, dim=1)
@@ -145,12 +135,11 @@ class ActorCriticAgent(BaseAgent):
     Policy agent which returns policy and value tensors from observations. Value are stored in agent's state
     and could be reused for rollouts calculations by ExperienceSource.
     """
-    def __init__(self, model, action_selector=actions.ProbabilityActionSelector(), cuda=False,
-                 cuda_device_id=None, apply_softmax=False, preprocessor=default_states_preprocessor):
+    def __init__(self, model, action_selector=actions.ProbabilityActionSelector(), device="cpu",
+                 apply_softmax=False, preprocessor=default_states_preprocessor):
         self.model = model
         self.action_selector = action_selector
-        self.cuda = cuda
-        self.cuda_device_id = cuda_device_id
+        self.device = device
         self.apply_softmax = apply_softmax
         self.preprocessor = preprocessor
 
@@ -161,7 +150,7 @@ class ActorCriticAgent(BaseAgent):
         :return: list of actions
         """
         if self.preprocessor is not None:
-            states = self.preprocessor(states, cuda=self.cuda, device_id=self.cuda_device_id)
+            states = self.preprocessor(states).to(self.device)
         probs_v, values_v = self.model(states)
         if self.apply_softmax:
             probs_v = F.softmax(probs_v, dim=1)
