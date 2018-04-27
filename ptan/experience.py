@@ -480,13 +480,13 @@ class QLearningPreprocessor(BatchPreprocessor):
 
     To use different modes, use appropriate class method
     """
-    def __init__(self, model, target_model, use_double_dqn=False, batch_td_error_hook=None, gamma=0.99, cuda=False):
+    def __init__(self, model, target_model, use_double_dqn=False, batch_td_error_hook=None, gamma=0.99, device="cpu"):
         self.model = model
         self.target_model = target_model
         self.use_double_dqn = use_double_dqn
         self.batch_dt_error_hook = batch_td_error_hook
         self.gamma = gamma
-        self.cuda = cuda
+        self.device = device
 
     @staticmethod
     def simple_dqn(model, **kwargs):
@@ -510,20 +510,14 @@ class QLearningPreprocessor(BatchPreprocessor):
         # here we need both first and last values calculated using our main model, so we
         # combine both states into one batch for efficiency and separate results later
         if self.target_model is None or self.use_double_dqn:
-            states_t = torch.from_numpy(np.concatenate((states_first, states_last), axis=0))
-            states_v = Variable(states_t)
-            if self.cuda:
-                states_v = states_v.cuda()
-            res_both = self.model(states_v).data.cpu().numpy()
+            states_t = torch.tensor(np.concatenate((states_first, states_last), axis=0)).to(self.device)
+            res_both = self.model(states_t).data.cpu().numpy()
             return res_both[:len(states_first)], res_both[len(states_first):]
 
         # in this case we have target_model set and use_double_dqn==False
         # so, we should calculate first_q and last_q using different models
-        states_first_v = Variable(torch.from_numpy(states_first))
-        states_last_v = Variable(torch.from_numpy(states_last))
-        if self.cuda:
-            states_first_v = states_first_v.cuda()
-            states_last_v = states_last_v.cuda()
+        states_first_v = torch.tensor(states_first).to(self.device)
+        states_last_v = torch.tensor(states_last).to(self.device)
         q_first = self.model(states_first_v).data
         q_last = self.target_model(states_last_v).data
         return q_first.cpu().numpy(), q_last.cpu().numpy()
@@ -545,9 +539,7 @@ class QLearningPreprocessor(BatchPreprocessor):
         # here we have target_model set and use_double_dqn==True
         actions = q_last.argmax(axis=1)
         # calculate Q values using target net
-        states_last_v = Variable(torch.from_numpy(states_last))
-        if self.cuda:
-            states_last_v = states_last_v.cuda()
+        states_last_v = torch.tensor(states_last).to(self.device)
         q_last_target = self.target_model(states_last_v).data.cpu().numpy()
         return q_last_target[range(q_last_target.shape[0]), actions]
 
