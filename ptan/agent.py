@@ -67,7 +67,9 @@ class DQNAgent(BaseAgent):
         if agent_states is None:
             agent_states = [None] * len(states)
         if self.preprocessor is not None:
-            states = self.preprocessor(states).to(self.device)
+            states = self.preprocessor(states)
+            if torch.is_tensor(states):
+                states = states.to(self.device)
         q_v = self.dqn_model(states)
         q = q_v.data.cpu().numpy()
         actions = self.action_selector(q)
@@ -121,7 +123,9 @@ class PolicyAgent(BaseAgent):
         if agent_states is None:
             agent_states = [None] * len(states)
         if self.preprocessor is not None:
-            states = self.preprocessor(states).to(self.device)
+            states = self.preprocessor(states)
+            if torch.is_tensor(states):
+                states = states.to(self.device)
         probs_v = self.model(states)
         if self.apply_softmax:
             probs_v = F.softmax(probs_v, dim=1)
@@ -150,7 +154,9 @@ class ActorCriticAgent(BaseAgent):
         :return: list of actions
         """
         if self.preprocessor is not None:
-            states = self.preprocessor(states).to(self.device)
+            states = self.preprocessor(states)
+            if torch.is_tensor(states):
+                states = states.to(self.device)
         probs_v, values_v = self.model(states)
         if self.apply_softmax:
             probs_v = F.softmax(probs_v, dim=1)
