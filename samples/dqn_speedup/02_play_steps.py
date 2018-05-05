@@ -19,6 +19,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--steps", type=int, default=1, help="Play steps to use, default=1")
     parser.add_argument("--seed", type=int, help="Random seed to use")
     args = parser.parse_args()
+    device = torch.device("cuda" if args.cuda else "cpu")
 
     if args.seed is not None:
         np.random.seed(args.seed)
@@ -34,14 +35,12 @@ if __name__ == "__main__":
 
     suffix = "" if args.seed is None else "_seed=%s" % args.seed
     writer = SummaryWriter(comment="-" + params['run_name'] + "-02_play_steps=%d%s" % (args.steps, suffix))
-    net = dqn_model.DQN(env.observation_space.shape, env.action_space.n)
-    if args.cuda:
-        net.cuda()
+    net = dqn_model.DQN(env.observation_space.shape, env.action_space.n).to(device)
 
     tgt_net = ptan.agent.TargetNet(net)
     selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = common.EpsilonTracker(selector, params)
-    agent = ptan.agent.DQNAgent(net, selector, cuda=args.cuda)
+    agent = ptan.agent.DQNAgent(net, selector, device=device)
 
     exp_source = ptan.experience.ExperienceSourceFirstLast(env, agent, gamma=params['gamma'], steps_count=1)
     buffer = ptan.experience.ExperienceReplayBuffer(exp_source, buffer_size=params['replay_size'])

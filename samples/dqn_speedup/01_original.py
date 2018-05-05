@@ -3,6 +3,7 @@ import gym
 import ptan
 import argparse
 
+import torch
 import torch.optim as optim
 
 from tensorboardX import SummaryWriter
@@ -15,19 +16,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     args = parser.parse_args()
+    device = torch.device("cuda" if args.cuda else "cpu")
 
     env = gym.make(params['env_name'])
     env = ptan.common.wrappers.wrap_dqn(env)
 
     writer = SummaryWriter(comment="-" + params['run_name'] + "-01_original")
-    net = dqn_model.DQN(env.observation_space.shape, env.action_space.n)
-    if args.cuda:
-        net.cuda()
+    net = dqn_model.DQN(env.observation_space.shape, env.action_space.n).to(device)
 
     tgt_net = ptan.agent.TargetNet(net)
     selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = common.EpsilonTracker(selector, params)
-    agent = ptan.agent.DQNAgent(net, selector, cuda=args.cuda)
+    agent = ptan.agent.DQNAgent(net, selector, device=device)
 
     exp_source = ptan.experience.ExperienceSourceFirstLast(env, agent, gamma=params['gamma'], steps_count=1)
     buffer = ptan.experience.ExperienceReplayBuffer(exp_source, buffer_size=params['replay_size'])
