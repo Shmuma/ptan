@@ -172,6 +172,7 @@ class LazyFrames(object):
         return out
 
 
+# TODO: this wrapper assumes that we have 3D tensors, which might be not true.
 class FrameStack(gym.Wrapper):
     def __init__(self, env, k):
         """Stack k last frames.
@@ -209,6 +210,7 @@ class ScaledFloatFrame(gym.ObservationWrapper):
         return np.array(obs).astype(np.float32) / 255.0
 
 
+# TODO: why do we have float32 dtype here?
 class ImageToPyTorch(gym.ObservationWrapper):
     """
     Change image shape to CWH
