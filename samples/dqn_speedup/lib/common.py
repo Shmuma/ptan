@@ -6,6 +6,20 @@ import torch.nn as nn
 
 
 HYPERPARAMS = {
+    'fsa-pong': {
+        'env_name':         "fsa-PongNoFrameskip-v4",
+        'stop_reward':      18.0,
+        'run_name':         'pong',
+        'replay_size':      100000,
+        'replay_initial':   10000,
+        'target_net_sync':  1000,
+        'epsilon_frames':   10**5,
+        'epsilon_start':    1.0,
+        'epsilon_final':    0.02,
+        'learning_rate':    0.0001,
+        'gamma':            0.99,
+        'batch_size':       32
+    },
     'pong': {
         'env_name':         "PongNoFrameskip-v4",
         'stop_reward':      18.0,
@@ -65,44 +79,90 @@ HYPERPARAMS = {
 }
 
 
-def unpack_batch(batch):
-    states, actions, rewards, dones, last_states = [], [], [], [], []
-    for exp in batch:
-        state = np.array(exp.state, copy=False)
-        states.append(state)
-        actions.append(exp.action)
-        rewards.append(exp.reward)
-        dones.append(exp.last_state is None)
-        if exp.last_state is None:
-            last_states.append(state)       # the result will be masked anyway
-        else:
-            last_states.append(np.array(exp.last_state, copy=False))
-    return np.array(states, copy=False), np.array(actions), np.array(rewards, dtype=np.float32), \
-           np.array(dones, dtype=np.uint8), np.array(last_states, copy=False)
+def unpack_batch(batch, fsa=False):
+    if fsa:
+        states, logics, actions, rewards, dones, last_states, last_logics = [], [], [], [], [], [], []
+        for exp in batch:
+            state = np.array(exp.state['image'], copy=False)
+            states.append(state)
+            logic = np.array(exp.state['logic'], copy=False)
+            logics.append(logic)
+            actions.append(exp.action)
+            rewards.append(exp.reward)
+            dones.append(exp.last_state is None)
+            if exp.last_state is None:
+                last_states.append(state)       # the result will be masked anyway
+                last_logics.append(logic)
+            else:
+                last_states.append(np.array(exp.last_state['image'], copy=False))
+                last_logics.append(np.array(exp.last_state['logic'], copy=False))
+        return np.array(states, copy=False), np.array(logics, copy=False), np.array(actions), \
+               np.array(rewards, dtype=np.float32), np.array(dones, dtype=np.uint8), \
+               np.array(last_states, copy=False), np.array(last_logics, copy=False)
+    else:
+        states, actions, rewards, dones, last_states = [], [], [], [], []
+        for exp in batch:
+            state = np.array(exp.state, copy=False)
+            states.append(state)
+            actions.append(exp.action)
+            rewards.append(exp.reward)
+            dones.append(exp.last_state is None)
+            if exp.last_state is None:
+                last_states.append(state)       # the result will be masked anyway
+            else:
+                last_states.append(np.array(exp.last_state, copy=False))
+        return np.array(states, copy=False), np.array(actions), np.array(rewards, dtype=np.float32), \
+               np.array(dones, dtype=np.uint8), np.array(last_states, copy=False)
 
 
-def calc_loss_dqn(batch, net, tgt_net, gamma, cuda=False, cuda_async=False):
-    states, actions, rewards, dones, next_states = unpack_batch(batch)
+def calc_loss_dqn(batch, net, tgt_net, gamma, cuda=False, cuda_async=False, fsa=False):
 
-    states_v = torch.tensor(states)
-    next_states_v = torch.tensor(next_states)
-    actions_v = torch.tensor(actions)
-    rewards_v = torch.tensor(rewards)
-    done_mask = torch.ByteTensor(dones)
-    if cuda:
-        states_v = states_v.cuda(non_blocking=cuda_async)
-        next_states_v = next_states_v.cuda(non_blocking=cuda_async)
-        actions_v = actions_v.cuda(non_blocking=cuda_async)
-        rewards_v = rewards_v.cuda(non_blocking=cuda_async)
-        done_mask = done_mask.cuda(non_blocking=cuda_async)
 
-    state_action_values = net(states_v).gather(1, actions_v.unsqueeze(-1)).squeeze(-1)
-    next_state_values = tgt_net(next_states_v).max(1)[0]
-    next_state_values[done_mask] = 0.0
+    if fsa:
+        states, logics, actions, rewards, dones, next_states, next_logics = unpack_batch(batch, fsa)
+        states_v = torch.tensor(states)
+        logics_v = torch.tensor(logics)
+        next_states_v = torch.tensor(next_states)
+        next_logics_v = torch.tensor(next_logics)
+        actions_v = torch.tensor(actions)
+        rewards_v = torch.tensor(rewards)
+        done_mask = torch.ByteTensor(dones)
+        if cuda:
+            states_v = states_v.cuda(non_blocking=cuda_async)
+            logics_v = logics_v.cuda(non_blocking=cuda_async)
+            next_states_v = next_states_v.cuda(non_blocking=cuda_async)
+            next_logics_v = next_logics_v.cuda(non_blocking=cuda_async)
+            actions_v = actions_v.cuda(non_blocking=cuda_async)
+            rewards_v = rewards_v.cuda(non_blocking=cuda_async)
+            done_mask = done_mask.cuda(non_blocking=cuda_async)
 
-    expected_state_action_values = next_state_values.detach() * gamma + rewards_v
-    return nn.MSELoss()(state_action_values, expected_state_action_values)
+        state_action_values = net({'image': states_v, 'logic': logics_v}).gather(1, actions_v.unsqueeze(-1)).squeeze(-1)
+        next_state_values = tgt_net({'image': next_states_v, 'logic': next_logics_v}).max(1)[0]
+        next_state_values[done_mask] = 0.0
 
+        expected_state_action_values = next_state_values.detach() * gamma + rewards_v
+        return nn.MSELoss()(state_action_values, expected_state_action_values)
+
+    else:
+        states, actions, rewards, dones, next_states = unpack_batch(batch, fsa)
+        states_v = torch.tensor(states)
+        next_states_v = torch.tensor(next_states)
+        actions_v = torch.tensor(actions)
+        rewards_v = torch.tensor(rewards)
+        done_mask = torch.ByteTensor(dones)
+        if cuda:
+            states_v = states_v.cuda(non_blocking=cuda_async)
+            next_states_v = next_states_v.cuda(non_blocking=cuda_async)
+            actions_v = actions_v.cuda(non_blocking=cuda_async)
+            rewards_v = rewards_v.cuda(non_blocking=cuda_async)
+            done_mask = done_mask.cuda(non_blocking=cuda_async)
+
+        state_action_values = net(states_v).gather(1, actions_v.unsqueeze(-1)).squeeze(-1)
+        next_state_values = tgt_net(next_states_v).max(1)[0]
+        next_state_values[done_mask] = 0.0
+
+        expected_state_action_values = next_state_values.detach() * gamma + rewards_v
+        return nn.MSELoss()(state_action_values, expected_state_action_values)
 
 class RewardTracker:
     def __init__(self, writer, stop_reward):

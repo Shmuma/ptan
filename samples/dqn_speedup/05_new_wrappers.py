@@ -9,24 +9,25 @@ import torch.multiprocessing as mp
 from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common, atari_wrappers
+import pdb
 
 PLAY_STEPS = 4
 
 
 def make_env(params):
-    env = atari_wrappers.make_atari(params['env_name'])
-    env = atari_wrappers.wrap_deepmind(env, frame_stack=True, pytorch_img=True)
+    env = atari_wrappers.make_atari(params['env_name'], fsa=params['fsa'])
+    env = atari_wrappers.wrap_deepmind(env, frame_stack=True, pytorch_img=True, fsa=params['fsa'])
     return env
 
 
-def play_func(params, net, cuda, exp_queue):
+def play_func(params, net, cuda, fsa, exp_queue):
     device = torch.device("cuda" if cuda else "cpu")
     env = make_env(params)
 
     writer = SummaryWriter(comment="-" + params['run_name'] + "-05_new_wrappers")
     selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = common.EpsilonTracker(selector, params)
-    agent = ptan.agent.DQNAgent(net, selector, device=device)
+    agent = ptan.agent.DQNAgent(net, selector, device=device, fsa=fsa)
     exp_source = ptan.experience.ExperienceSourceFirstLast(env, agent, gamma=params['gamma'], steps_count=1)
     exp_source_iter = iter(exp_source)
 
@@ -49,23 +50,32 @@ def play_func(params, net, cuda, exp_queue):
 
 
 if __name__ == "__main__":
-    mp.set_start_method('spawn')
-    params = common.HYPERPARAMS['pong']
-    params['batch_size'] *= PLAY_STEPS
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
+    parser.add_argument("--fsa", default=False, action="store_true", help="Use FSA stuff")
     args = parser.parse_args()
+
+    mp.set_start_method('spawn')
+    if args.fsa:
+        params = common.HYPERPARAMS['fsa-pong']
+    else:
+        params = common.HYPERPARAMS['pong']
+    params['batch_size'] *= PLAY_STEPS
+    params['fsa'] = args.fsa
     device = torch.device("cuda" if args.cuda else "cpu")
 
     env = make_env(params)
-    net = dqn_model.DQN(env.observation_space.shape, env.action_space.n).to(device)
+    if args.fsa:
+        net = dqn_model.FSADQN(env.observation_space.spaces['image'].shape, env.action_space.n).to(device)
+    else:
+        net = dqn_model.DQN(env.observation_space.shape, env.action_space.n).to(device)
     tgt_net = ptan.agent.TargetNet(net)
 
     buffer = ptan.experience.ExperienceReplayBuffer(experience_source=None, buffer_size=params['replay_size'])
     optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
 
     exp_queue = mp.Queue(maxsize=PLAY_STEPS * 2)
-    play_proc = mp.Process(target=play_func, args=(params, net, args.cuda, exp_queue))
+    play_proc = mp.Process(target=play_func, args=(params, net, args.cuda, args.fsa, exp_queue))
     play_proc.start()
 
     frame_idx = 0
@@ -85,7 +95,7 @@ if __name__ == "__main__":
         optimizer.zero_grad()
         batch = buffer.sample(params['batch_size'])
         loss_v = common.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=params['gamma'],
-                                      cuda=args.cuda, cuda_async=True)
+                                      cuda=args.cuda, cuda_async=True, fsa=args.fsa)
         loss_v.backward()
         optimizer.step()
 
