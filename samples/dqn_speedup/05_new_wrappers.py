@@ -66,7 +66,8 @@ if __name__ == "__main__":
 
     env = make_env(params)
     if args.fsa:
-        net = dqn_model.FSADQN(env.observation_space.spaces['image'].shape, env.action_space.n).to(device)
+        net = dqn_model.FSADQN(env.observation_space.spaces['image'].shape,
+                               env.observation_space.spaces['logic'].nvec, env.action_space.n).to(device)
     else:
         net = dqn_model.DQN(env.observation_space.shape, env.action_space.n).to(device)
     tgt_net = ptan.agent.TargetNet(net)

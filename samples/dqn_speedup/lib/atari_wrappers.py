@@ -169,7 +169,7 @@ class FrameStack(gym.Wrapper):
         if fsa:
             shp = env.observation_space.spaces['image'].shape
             image_space = spaces.Box(low=0, high=255, shape=(shp[0], shp[1], shp[2] * k), dtype=np.uint8)
-            logic_space = spaces.MultiDiscrete([env.observation_space.spaces['logic'].n] * k)
+            logic_space = spaces.MultiDiscrete(env.observation_space.spaces['logic'].nvec.tolist() * k)
             self.observation_space = spaces.Dict({'image': image_space, 'logic': logic_space})
         else:
             shp = env.observation_space.shape
