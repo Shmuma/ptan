@@ -67,8 +67,6 @@ class FSADQN(nn.Module):
             #lv_i = nn.Sequential()
             #lv_i.add_module('linear', lin_i)
             #lv_i.add_module('softmax', nn.Softmax())
-            if count == 1:
-                self.conv_out_size = self._get_conv_out(input_shape)
             # final_conv layer depending on the input
             conv_i = nn.Sequential(
                 nn.Conv2d(64, 64, kernel_size=3, stride=1),
@@ -81,6 +79,9 @@ class FSADQN(nn.Module):
                 self.fsa_map[e] = count
                 count += 1
             self.final_conv_layers.append(conv_i)
+
+            if count == 0:
+                self.conv_out_size = self._get_conv_out(input_shape)
 
             fsa_linear_i = nn.Linear(512, n_actions)
             self.fsa_final_layers.append(fsa_linear_i)
