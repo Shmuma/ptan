@@ -80,7 +80,7 @@ class FSADQN(nn.Module):
                 count += 1
             self.final_conv_layers.append(conv_i)
 
-            if count == 0:
+            if count == 1:
                 self.conv_out_size = self._get_conv_out(input_shape)
 
             fsa_linear_i = nn.Linear(512, n_actions)
