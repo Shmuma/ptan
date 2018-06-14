@@ -41,9 +41,81 @@ class Flatten(nn.Module):
     def forward(self, input):
         return input.view(input.size()[0], -1)
 
+# shared conv net, no attention
 class FSADQN(nn.Module):
     def __init__(self, input_shape, fsa_nvec, n_actions):
         super(FSADQN, self).__init__()
+
+        # input_shape[0] = number of input channels
+        self.conv = nn.Sequential(
+            nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU()
+        )
+
+        self.conv_out_size = self._get_conv_out(input_shape)
+
+        self.fsa_map = dict()
+        self.final_conv_layers = []
+        self.fsa_final_layers = []
+        all_fsa_states = map(lambda n: range(n), fsa_nvec)
+        count = 0
+        for element in itertools.product(*all_fsa_states):
+            #lin_i = nn.Linear(in_features=self.conv_out_size,
+            #              out_features=self.conv_out_size,
+            #              bias=False)
+            #lin_i.weight.data.fill_(1)
+            #lv_i = nn.Sequential()
+            #lv_i.add_module('linear', lin_i)
+            #lv_i.add_module('softmax', nn.Softmax())
+
+            # final_conv layer depending on the input
+            conv_i = nn.Sequential(
+                nn.Conv2d(64, 64, kernel_size=3, stride=1),
+                nn.ReLU()
+            )
+
+            # record dictionary
+            e = tuple(element)
+            if e not in self.fsa_map:
+                self.fsa_map[e] = count
+                count += 1
+            self.final_conv_layers.append(conv_i)
+
+            fsa_linear_i = nn.Linear(512, n_actions)
+            self.fsa_final_layers.append(fsa_linear_i)
+
+        self.fc = nn.Sequential(
+            nn.Linear(self.conv_out_size, 512),
+            nn.ReLU()
+        )
+
+    def _get_conv_out(self, shape):
+        o = self.final_conv_layers[0](self.conv(Variable(torch.zeros(1, *shape))))
+        return int(np.prod(o.size()))
+
+
+    def forward(self, x):
+        im = x['image']
+        # note that we are only looking at the logic vector of
+        # the 0th frame right now. should check that we look
+        # at the vector of the most recent frame (may be last frame?)
+        logic = tuple(x['logic'][0].view(-1).cpu().numpy()) # assume is a vector of the same shape as fsa_nvec
+        fx = im.float() / 256
+        # select based on fsa state
+        final_conv_layer = self.final_conv_layers[self.fsa_map[logic]].cuda()
+        # compose with shared conv net
+        conv_out = final_conv_layer(self.conv(fx)).view(fx.size()[0], -1)
+        fc_output = self.fc(conv_out)
+        # select based on fsa state
+        fsa_final = self.fsa_final_layers[self.fsa_map[logic]].cuda()
+        return fsa_final(fc_output)
+
+# attentional version
+class FSADQNATTN(nn.Module):
+    def __init__(self, input_shape, fsa_nvec, n_actions):
+        super(FSADQNATTN, self).__init__()
 
         # input_shape[0] = number of input channels
         self.conv = nn.Sequential(
@@ -57,7 +129,7 @@ class FSADQN(nn.Module):
 
         self.conv_out_size = self._get_conv_out(input_shape)
 
-        self.attention_map = dict()
+        self.fsa_map = dict()
         self.attention_layers = []
         self.fsa_final_layers = []
         all_fsa_states = map(lambda n: range(n), fsa_nvec)
@@ -72,6 +144,7 @@ class FSADQN(nn.Module):
             #lv_i.add_module('softmax', nn.Softmax())
 
             # attention map depending on the input
+            # should make this smaller (have to calculate proper size then)
             conv_i = nn.Sequential(
             nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
             nn.ReLU(),
@@ -86,8 +159,8 @@ class FSADQN(nn.Module):
 
             # record dictionary
             e = tuple(element)
-            if e not in self.attention_map:
-                self.attention_map[e] = count
+            if e not in self.fsa_map:
+                self.fsa_map[e] = count
                 count += 1
             self.attention_layers.append(conv_i)
 
@@ -116,9 +189,9 @@ class FSADQN(nn.Module):
         #fsa_mask = torch.ones(self.conv_out_size, requires_grad=True).to('cuda')
         #mask_weights = self.attention_layers[self.attention_map[logic]].cuda()
         #fsa_mask = mask_weights(fsa_mask.view(-1)).view(self.conv_out_size)
-        mask_weights = self.attention_layers[self.attention_map[logic]].cuda()
+        mask_weights = self.attention_layers[self.fsa_map[logic]].cuda()
         mask_output = mask_weights(fx).view(fx.size()[0], -1)
         fsa_mask = mask_output # .view(self.conv_out_size)
         fc_output = self.fc(conv_out*fsa_mask.to('cuda'))
-        fsa_final = self.fsa_final_layers[self.attention_map[logic]].cuda()
+        fsa_final = self.fsa_final_layers[self.fsa_map[logic]].cuda()
         return fsa_final(fc_output)
