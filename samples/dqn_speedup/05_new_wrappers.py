@@ -9,7 +9,7 @@ import torch.multiprocessing as mp
 from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common, atari_wrappers
-import pdb
+from gym.utils.play import play
 
 PLAY_STEPS = 4
 
@@ -65,6 +65,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if args.cuda else "cpu")
 
     env = make_env(params)
+    
     if args.fsa:
         net = dqn_model.FSADQN(env.observation_space.spaces['image'].shape,
                                env.observation_space.spaces['logic'].nvec, env.action_space.n).to(device)

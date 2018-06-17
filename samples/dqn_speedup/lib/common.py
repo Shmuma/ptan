@@ -13,7 +13,7 @@ HYPERPARAMS = {
         'replay_size':      100000,
         'replay_initial':   10000,
         'target_net_sync':  1000,
-        'epsilon_frames':   5*10**5,
+        'epsilon_frames':   1.5*10**5,
         'epsilon_start':    1.0,
         'epsilon_final':    0.02,
         'learning_rate':    0.0001,
