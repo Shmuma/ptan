@@ -37,12 +37,74 @@ class DQN(nn.Module):
         conv_out = self.conv(fx).view(fx.size()[0], -1)
         return self.fc(conv_out)
 
+# control class. it's the same as the DQN model but can handle the logic
+class FSADQN(nn.Module):
+    def __init__(self, input_shape, fsa_nvec, n_actions):
+        super(FSADQN, self).__init__()
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU()
+        )
+
+        conv_out_size = self._get_conv_out(input_shape)
+        self.fc = nn.Sequential(
+            nn.Linear(conv_out_size, 512),
+            nn.ReLU(),
+            nn.Linear(512, n_actions)
+        )
+
+    def _get_conv_out(self, shape):
+        o = self.conv(torch.zeros(1, *shape))
+        return int(np.prod(o.size()))
+
+    def forward(self, x):
+        x = x['image']
+        fx = x.float() / 256
+        conv_out = self.conv(fx).view(fx.size()[0], -1)
+        return self.fc(conv_out)
+
+# brandon's attempt to integrate logic
+class FSADQNBA(nn.Module):
+    def __init__(self, input_shape, fsa_nvec, n_actions):
+        super(FSADQN, self).__init__()
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU()
+        )
+
+        conv_out_size = self._get_conv_out(input_shape)
+        self.fc = nn.Sequential(
+            nn.Linear(conv_out_size, 512),
+            nn.ReLU(),
+            nn.Linear(512, n_actions)
+        )
+
+    def _get_conv_out(self, shape):
+        o = self.conv(torch.zeros(1, *shape))
+        return int(np.prod(o.size()))
+
+    def forward(self, x):
+        x = x['image']
+        fx = x.float() / 256
+        conv_out = self.conv(fx).view(fx.size()[0], -1)
+        return self.fc(conv_out)
+
 class Flatten(nn.Module):
     def forward(self, input):
         return input.view(input.size()[0], -1)
 
 # shared conv net, no attention
-class FSADQN(nn.Module):
+class FSADQNConv(nn.Module):
     def __init__(self, input_shape, fsa_nvec, n_actions):
         super(FSADQN, self).__init__()
 

@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
     mp.set_start_method('spawn')
     if args.fsa:
-        params = common.HYPERPARAMS['fsa-pong']
+        params = common.HYPERPARAMS['fsa-invaders']
     else:
         params = common.HYPERPARAMS['pong']
     params['batch_size'] *= PLAY_STEPS
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if args.cuda else "cpu")
 
     env = make_env(params)
-    
+
     if args.fsa:
         net = dqn_model.FSADQN(env.observation_space.spaces['image'].shape,
                                env.observation_space.spaces['logic'].nvec, env.action_space.n).to(device)
