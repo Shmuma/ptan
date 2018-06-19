@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
     mp.set_start_method('spawn')
     if args.fsa:
-        params = common.HYPERPARAMS['fsa-invaders']
+        params = common.HYPERPARAMS['fsa-pong']
     else:
         params = common.HYPERPARAMS['pong']
     params['batch_size'] *= PLAY_STEPS
@@ -67,7 +67,7 @@ if __name__ == "__main__":
     env = make_env(params)
 
     if args.fsa:
-        net = dqn_model.FSADQN(env.observation_space.spaces['image'].shape,
+        net = dqn_model.FSADQNConvOneLogic(env.observation_space.spaces['image'].shape,
                                env.observation_space.spaces['logic'].nvec, env.action_space.n).to(device)
     else:
         net = dqn_model.DQN(env.observation_space.shape, env.action_space.n).to(device)

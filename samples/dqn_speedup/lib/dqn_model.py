@@ -106,7 +106,7 @@ class Flatten(nn.Module):
 # shared conv net, no attention
 class FSADQNConv(nn.Module):
     def __init__(self, input_shape, fsa_nvec, n_actions):
-        super(FSADQN, self).__init__()
+        super(FSADQNConv, self).__init__()
 
         # input_shape[0] = number of input channels
         self.conv = nn.Sequential(
@@ -149,7 +149,7 @@ class FSADQNConv(nn.Module):
             self.fsa_final_layers.append(fsa_linear_i)
 
         self.fc = nn.Sequential(
-            nn.Linear(self.conv_out_size, 512),
+            nn.Linear(self.conv_out_size, n_actions),
             nn.ReLU()
         )
 
@@ -171,8 +171,73 @@ class FSADQNConv(nn.Module):
         conv_out = final_conv_layer(self.conv(fx)).view(fx.size()[0], -1)
         fc_output = self.fc(conv_out)
         # select based on fsa state
-        fsa_final = self.fsa_final_layers[self.fsa_map[logic]].cuda()
-        return fsa_final(fc_output)
+        # fsa_final = self.fsa_final_layers[self.fsa_map[logic]].cuda()
+        # return fsa_final(fc_output)
+        return fc_output
+
+# shared conv net, no attention
+# this version has been modified to use only the LAST set of logic states
+# from the 4 frames
+class FSADQNConvOneLogic(nn.Module):
+    def __init__(self, input_shape, fsa_nvec, n_actions):
+        super(FSADQNConvOneLogic, self).__init__()
+
+        # input_shape[0] = number of input channels
+        self.conv = nn.Sequential(
+            nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU()
+        )
+
+        self.logic_dim = int(fsa_nvec.shape[0]/input_shape[0])
+        fsa_nvec = fsa_nvec[-self.logic_dim:]
+
+        self.fsa_map = dict()
+        self.final_conv_layers = []
+        self.fsa_final_layers = []
+        all_fsa_states = map(lambda n: range(n), fsa_nvec)
+        count = 0
+        for element in itertools.product(*all_fsa_states):
+
+            conv_i = nn.Sequential(
+                nn.Conv2d(64, 64, kernel_size=3, stride=1),
+                nn.ReLU()
+            )
+
+            # record dictionary
+            e = tuple(element)
+            if e not in self.fsa_map:
+                self.fsa_map[e] = count
+                count += 1
+            self.final_conv_layers.append(conv_i)
+
+            if count == 1:
+                self.conv_out_size = self._get_conv_out(input_shape)
+
+            fsa_linear_i = nn.Linear(512, n_actions)
+            self.fsa_final_layers.append(fsa_linear_i)
+
+        self.fc = nn.Sequential(
+            nn.Linear(self.conv_out_size, 512),
+            nn.ReLU(),
+            nn.Linear(512, n_actions)
+        )
+
+    def _get_conv_out(self, shape):
+        o = self.final_conv_layers[0](self.conv(Variable(torch.zeros(1, *shape))))
+        return int(np.prod(o.size()))
+
+
+    def forward(self, x):
+        im = x['image']
+        logic = tuple(x['logic'][0][-1].view(-1).cpu().numpy()) # assume is a vector of the same shape as fsa_nvec
+        fx = im.float() / 256
+        final_conv_layer = self.final_conv_layers[self.fsa_map[logic]].cuda()
+        conv_out = final_conv_layer(self.conv(fx)).view(fx.size()[0], -1)
+        fc_output = self.fc(conv_out)
+
+        return fc_output
 
 # attentional version
 class FSADQNATTN(nn.Module):
