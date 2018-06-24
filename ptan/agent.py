@@ -67,12 +67,13 @@ class DQNAgent(BaseAgent):
     from the observations and  converts them into the actions using action_selector
     """
     def __init__(self, dqn_model, action_selector, device="cpu", fsa=False,
-                 preprocessor=default_states_preprocessor):
+                 preprocessor=default_states_preprocessor, epsilon_tracker=None):
         self.dqn_model = dqn_model
         self.action_selector = action_selector
         self.preprocessor = preprocessor
         self.device = device
         self.fsa = fsa
+        self.epsilon_tracker = epsilon_tracker
 
     def __call__(self, states, agent_states=None):
         if agent_states is None:
@@ -86,10 +87,19 @@ class DQNAgent(BaseAgent):
                     states['image'] = states['image'].to(self.device)
                 if torch.is_tensor(states['logic']):
                     states['logic'] = states['logic'].to(self.device)
-        q_v = self.dqn_model(states)
+        # recon, conv_output = None, None
+        if self.dqn_model.__class__.__name__ == 'FSADQNATTNMatching':
+            q_v, recon, conv_output = self.dqn_model(states)
+        else:
+            q_v = self.dqn_model(states)
+        if self.epsilon_tracker and self.fsa:
+                self.epsilon_tracker.frame(tuple(states['logic'][0][-1].cpu().numpy()))
         q = q_v.data.cpu().numpy()
-        actions = self.action_selector(q)
-        return actions, agent_states
+        if self.fsa:
+            actions = self.action_selector(q, tuple(states['logic'][0][-1].cpu().numpy()))
+        else:
+            actions = self.action_selector(q)
+        return actions, agent_states # , recon, conv_output
 
 
 class TargetNet:

@@ -20,14 +20,19 @@ def make_env(params):
     return env
 
 
-def play_func(params, net, cuda, fsa, exp_queue):
+def play_func(params, net, cuda, fsa, exp_queue, fsa_nvec=None):
     device = torch.device("cuda" if cuda else "cpu")
     env = make_env(params)
 
     writer = SummaryWriter(comment="-" + params['run_name'] + "-05_new_wrappers")
-    selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
-    epsilon_tracker = common.EpsilonTracker(selector, params)
-    agent = ptan.agent.DQNAgent(net, selector, device=device, fsa=fsa)
+    if not fsa:
+        selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
+        epsilon_tracker = common.EpsilonTracker(selector, params)
+        agent = ptan.agent.DQNAgent(net, selector, device=device, fsa=fsa)
+    else:
+        selector = ptan.actions.EpsilonGreedyActionSelectorFsa(fsa_nvec, epsilon=params['epsilon_start'])
+        epsilon_tracker = common.IndexedEpsilonTrackerNoStates(selector, params, fsa_nvec)
+        agent = ptan.agent.DQNAgent(net, selector, device=device, fsa=fsa, epsilon_tracker=epsilon_tracker)
     exp_source = ptan.experience.ExperienceSourceFirstLast(env, agent, gamma=params['gamma'], steps_count=1)
     exp_source_iter = iter(exp_source)
 
@@ -39,12 +44,17 @@ def play_func(params, net, cuda, fsa, exp_queue):
             exp = next(exp_source_iter)
             exp_queue.put(exp)
 
-            epsilon_tracker.frame(frame_idx)
+            if not fsa:
+                epsilon_tracker.frame(frame_idx)
 
             new_rewards = exp_source.pop_total_rewards()
             if new_rewards:
-                if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon):
-                    break
+                if not fsa:
+                    if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon):
+                        break
+                else:
+                    if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon_dict):
+                        break
 
     exp_queue.put(None)
 
@@ -57,9 +67,9 @@ if __name__ == "__main__":
 
     mp.set_start_method('spawn')
     if args.fsa:
-        params = common.HYPERPARAMS['fsa-pong']
+        params = common.HYPERPARAMS['fsa-invaders']
     else:
-        params = common.HYPERPARAMS['pong']
+        params = common.HYPERPARAMS['invaders']
     params['batch_size'] *= PLAY_STEPS
     params['fsa'] = args.fsa
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -67,8 +77,11 @@ if __name__ == "__main__":
     env = make_env(params)
 
     if args.fsa:
-        net = dqn_model.FSADQNConvOneLogic(env.observation_space.spaces['image'].shape,
-                               env.observation_space.spaces['logic'].nvec, env.action_space.n).to(device)
+        net = dqn_model.FSADQNATTNMatching(env.observation_space.spaces['image'].shape,
+                                           env.observation_space.spaces['logic'].nvec,
+                                           env.action_space.n).to(device)
+        # net = dqn_model.FSADQNConvOneLogic(env.observation_space.spaces['image'].shape,
+        #                        env.observation_space.spaces['logic'].nvec, env.action_space.n).to(device)
     else:
         net = dqn_model.DQN(env.observation_space.shape, env.action_space.n).to(device)
     tgt_net = ptan.agent.TargetNet(net)
@@ -77,7 +90,17 @@ if __name__ == "__main__":
     optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
 
     exp_queue = mp.Queue(maxsize=PLAY_STEPS * 2)
-    play_proc = mp.Process(target=play_func, args=(params, net, args.cuda, args.fsa, exp_queue))
+
+    if args.fsa:
+        fsa_nvec = env.observation_space.spaces['logic'].nvec
+        logic_dim = int(fsa_nvec.shape[0] / env.observation_space.spaces['image'].shape[0])
+        fsa_nvec = fsa_nvec[-logic_dim:]
+        play_proc = mp.Process(target=play_func,
+                               args=(params, net, args.cuda, args.fsa, exp_queue,
+                                     fsa_nvec))
+    else:
+        play_proc = mp.Process(target=play_func, args=(params, net, args.cuda, args.fsa, exp_queue))
+
     play_proc.start()
 
     frame_idx = 0

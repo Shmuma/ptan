@@ -68,10 +68,12 @@ class FSADQN(nn.Module):
         conv_out = self.conv(fx).view(fx.size()[0], -1)
         return self.fc(conv_out)
 
-# brandon's attempt to integrate logic
-class FSADQNBA(nn.Module):
+# implementation of Kiran's idea to use FSA state to predict conv output
+# then get attention layer from the diff between predicted and actual
+# conv output
+class FSADQNATTNMatching(nn.Module):
     def __init__(self, input_shape, fsa_nvec, n_actions):
-        super(FSADQN, self).__init__()
+        super(FSADQNATTNMatching, self).__init__()
 
         self.conv = nn.Sequential(
             nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
@@ -82,9 +84,64 @@ class FSADQNBA(nn.Module):
             nn.ReLU()
         )
 
+        fsa_dim = int(fsa_nvec.shape[0]/input_shape[0])
+        # output size determined by kernel_size
+        self.deconv = nn.Sequential(
+            nn.ConvTranspose2d(fsa_dim, 32, kernel_size=3, stride=1),
+            nn.ConvTranspose2d(32, 64, kernel_size=5, stride=1)
+        )
+
         conv_out_size = self._get_conv_out(input_shape)
         self.fc = nn.Sequential(
             nn.Linear(conv_out_size, 512),
+            nn.ReLU(),
+            nn.Linear(512, 2*n_actions),
+            nn.ReLU()
+        )
+
+        self.fc2 = nn.Linear(2*n_actions + fsa_dim, n_actions)
+
+    def _get_conv_out(self, shape):
+        o = self.conv(torch.zeros(1, *shape))
+        return int(np.prod(o.size()))
+
+    def forward(self, x):
+        image = x['image']
+        logic = x['logic'][:, -1]
+        logic = logic[..., None, None].float()
+        recon = self.deconv(logic)
+        fx = image.float() / 256
+        conv_out = self.conv(fx)
+        diff = (conv_out - recon).abs()
+        diff_sm = nn.Softmax(dim=2)(diff.view(diff.shape[0], diff.shape[1], diff.shape[2]*diff.shape[3]))
+        diff = diff_sm.view(diff.shape[0], diff.shape[1], diff.shape[2], diff.shape[3])
+        # max_diff = torch.max(diff)
+        # diff = diff / max_diff
+        conv_out_masked = conv_out * diff
+        conv_out_flat = conv_out_masked.view(fx.size()[0], -1)
+        fc_out = self.fc(conv_out_flat)
+        appended_fsa = torch.cat((fc_out.t(), x['logic'][:, -1].float().t())).t()
+        return self.fc2(appended_fsa), recon, conv_out
+
+
+# simply append FSA state to the FC layer
+class FSADQNAppendToFC(nn.Module):
+    def __init__(self, input_shape, fsa_nvec, n_actions):
+        super(FSADQNAppendToFC, self).__init__()
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU()
+        )
+
+        fsa_dims = fsa_nvec.shape[0]/input_shape[0]
+        conv_out_size = self._get_conv_out(input_shape)
+        self.fc = nn.Sequential(
+            nn.Linear(conv_out_size + fsa_dims, 512),
             nn.ReLU(),
             nn.Linear(512, n_actions)
         )
@@ -94,10 +151,11 @@ class FSADQNBA(nn.Module):
         return int(np.prod(o.size()))
 
     def forward(self, x):
-        x = x['image']
-        fx = x.float() / 256
+        image = x['image']
+        fx = image.float() / 256
         conv_out = self.conv(fx).view(fx.size()[0], -1)
-        return self.fc(conv_out)
+        appended_fsa = torch.cat((conv_out.t(), x['logic'][:, -1].float().t())).t()
+        return self.fc(appended_fsa)
 
 class Flatten(nn.Module):
     def forward(self, input):
