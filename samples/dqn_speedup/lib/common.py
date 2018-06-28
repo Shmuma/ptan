@@ -82,13 +82,14 @@ HYPERPARAMS = {
         'stop_reward': 500.0,
         'run_name': 'fsa-invaders',
         'replay_size': 10 ** 6,
-        'replay_initial': 10000,
-        # 'replay_initial': 50000,
-        'target_net_sync': 1000,
-        'epsilon_frames': 10 ** 6 / 2,
+        # 'replay_initial': 10000,
+        'replay_initial': 50000,
+        'target_net_sync': 10000,
+        'epsilon_frames': 10 ** 6,
         'epsilon_start': 1.0,
         'epsilon_final': 0.1,
         'learning_rate': 0.00025,
+        # 'learning_rate': 0.00005,
         'gamma': 0.99,
         'batch_size': 32
     },
@@ -193,14 +194,28 @@ def calc_loss_dqn(batch, net, tgt_net, gamma, cuda=False, cuda_async=False, fsa=
             # recons_v = recons_v.cuda(non_blocking=cuda_async)
             # conv_outs_v = conv_outs_v.cuda(non_blocking=cuda_async)
 
-        state_action_values, rr, cc = net({'image': states_v, 'logic': logics_v})
-        state_action_values = state_action_values.gather(1, actions_v.unsqueeze(-1)).squeeze(-1)
-        next_state_values, rr2, cc2 = tgt_net({'image': next_states_v, 'logic': next_logics_v})
+        if net.__class__.__name__ == 'FSADQNATTNMatching' or net.__class__.__name__ == 'FSADQNATTNMatchingFC':
+            state_action_values, rr, cc = net({'image': states_v, 'logic': logics_v})
+            state_action_values = state_action_values.gather(1, actions_v.unsqueeze(-1)).squeeze(-1)
+            next_state_values, rr2, cc2 = tgt_net({'image': next_states_v, 'logic': next_logics_v})
+        elif net.__class__.__name__ == 'FSADQNAppendToFCL1Conv':
+            state_action_values, conv_out = net({'image': states_v, 'logic': logics_v})
+            state_action_values = state_action_values.gather(1, actions_v.unsqueeze(-1)).squeeze(-1)
+            next_state_values, conv_out2 = tgt_net({'image': next_states_v, 'logic': next_logics_v})
+        else:
+            state_action_values = net({'image': states_v, 'logic': logics_v})
+            state_action_values = state_action_values.gather(1, actions_v.unsqueeze(-1)).squeeze(-1)
+            next_state_values = tgt_net({'image': next_states_v, 'logic': next_logics_v})
         next_state_values = next_state_values.max(1)[0]
         next_state_values[done_mask] = 0.0
 
         expected_state_action_values = next_state_values.detach() * gamma + rewards_v
-        return nn.MSELoss()(state_action_values, expected_state_action_values) + nn.MSELoss()(rr, cc.data)
+        if net.__class__.__name__ == 'FSADQNATTNMatching' or net.__class__.__name__ == 'FSADQNATTNMatchingFC':
+            return nn.MSELoss()(state_action_values, expected_state_action_values) + nn.MSELoss()(rr, cc.data)
+        elif net.__class__.__name__ == 'FSADQNAppendToFCL1Conv':
+            return nn.MSELoss()(state_action_values, expected_state_action_values) + 0.01*conv_out.norm(1)
+        else:
+            return nn.MSELoss()(state_action_values, expected_state_action_values)
 
     else:
         states, actions, rewards, dones, next_states = unpack_batch(batch, fsa)
@@ -261,7 +276,7 @@ class RewardTracker:
         self.rewards = np.append(self.rewards, mean_reward)
         self.count += 1
         if self.count % 10 == 0:
-            plt.plot(self.rewards, 'o')
+            plt.plot(self.rewards, '-')
             plt.draw()
             plt.pause(0.001)
 
@@ -330,7 +345,7 @@ class IndexedEpsilonTrackerNoStates:
     def frame(self, logic):
         # right now 10 serves as the increment value for frame
         self.count += 1
-        frame = int(self.count / 10)
+        frame = int(self.count / 2)
         if frame > self.frame_count:
             new_eps = max(self.epsilon_final, self.epsilon_start - frame / self.epsilon_frames)
             for key in self.epsilon_greedy_selector.epsilon_dict:

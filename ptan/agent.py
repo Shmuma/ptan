@@ -88,8 +88,10 @@ class DQNAgent(BaseAgent):
                 if torch.is_tensor(states['logic']):
                     states['logic'] = states['logic'].to(self.device)
         # recon, conv_output = None, None
-        if self.dqn_model.__class__.__name__ == 'FSADQNATTNMatching':
+        if self.dqn_model.__class__.__name__ == 'FSADQNATTNMatching' or self.dqn_model.__class__.__name__ == 'FSADQNATTNMatchingFC':
             q_v, recon, conv_output = self.dqn_model(states)
+        elif self.dqn_model.__class__.__name__ == 'FSADQNAppendToFCL1Conv':
+            q_v, conv_out = self.dqn_model(states)
         else:
             q_v = self.dqn_model(states)
         if self.epsilon_tracker and self.fsa:

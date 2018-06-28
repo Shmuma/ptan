@@ -31,7 +31,10 @@ def play_func(params, net, cuda, fsa, exp_queue, fsa_nvec=None):
         agent = ptan.agent.DQNAgent(net, selector, device=device, fsa=fsa)
     else:
         selector = ptan.actions.EpsilonGreedyActionSelectorFsa(fsa_nvec, epsilon=params['epsilon_start'])
-        epsilon_tracker = common.IndexedEpsilonTrackerNoStates(selector, params, fsa_nvec)
+        if 'Index' in net.__class__.__name__:
+            epsilon_tracker = common.IndexedEpsilonTracker(selector, params, fsa_nvec)
+        else:
+            epsilon_tracker = common.IndexedEpsilonTrackerNoStates(selector, params, fsa_nvec)
         agent = ptan.agent.DQNAgent(net, selector, device=device, fsa=fsa, epsilon_tracker=epsilon_tracker)
     exp_source = ptan.experience.ExperienceSourceFirstLast(env, agent, gamma=params['gamma'], steps_count=1)
     exp_source_iter = iter(exp_source)
@@ -77,7 +80,7 @@ if __name__ == "__main__":
     env = make_env(params)
 
     if args.fsa:
-        net = dqn_model.FSADQNATTNMatching(env.observation_space.spaces['image'].shape,
+        net = dqn_model.FSADQNParallel(env.observation_space.spaces['image'].shape,
                                            env.observation_space.spaces['logic'].nvec,
                                            env.action_space.n).to(device)
         # net = dqn_model.FSADQNConvOneLogic(env.observation_space.spaces['image'].shape,
@@ -87,7 +90,8 @@ if __name__ == "__main__":
     tgt_net = ptan.agent.TargetNet(net)
 
     buffer = ptan.experience.ExperienceReplayBuffer(experience_source=None, buffer_size=params['replay_size'])
-    optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
+    # optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
+    optimizer = optim.RMSprop(net.parameters(), lr=params['learning_rate'], momentum=0.95, eps=0.01)
 
     exp_queue = mp.Queue(maxsize=PLAY_STEPS * 2)
 
@@ -106,6 +110,7 @@ if __name__ == "__main__":
     frame_idx = 0
 
     while play_proc.is_alive():
+        # build up experience replay buffer?
         frame_idx += PLAY_STEPS
         for _ in range(PLAY_STEPS):
             exp = exp_queue.get()
@@ -117,6 +122,7 @@ if __name__ == "__main__":
         if len(buffer) < params['replay_initial']:
             continue
 
+        # train on ERB?
         optimizer.zero_grad()
         batch = buffer.sample(params['batch_size'])
         loss_v = common.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=params['gamma'],
