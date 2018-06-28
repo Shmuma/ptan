@@ -275,10 +275,10 @@ class RewardTracker:
         ))
         self.rewards = np.append(self.rewards, mean_reward)
         self.count += 1
-        if self.count % 10 == 0:
-            plt.plot(self.rewards, '-')
-            plt.draw()
-            plt.pause(0.001)
+        # if self.count % 10 == 0:
+        #     plt.plot(self.rewards, '-')
+        #     plt.draw()
+        #     plt.pause(0.001)
 
 
         sys.stdout.flush()
