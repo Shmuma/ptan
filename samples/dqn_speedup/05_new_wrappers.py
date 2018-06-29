@@ -116,6 +116,8 @@ if __name__ == "__main__":
 
     frame_idx = 0
 
+    counter = 0
+    test_env = make_env(params)
     while play_proc.is_alive():
         # build up experience replay buffer?
         frame_idx += PLAY_STEPS
@@ -136,6 +138,19 @@ if __name__ == "__main__":
                                       cuda=args.cuda, cuda_async=True, fsa=args.fsa)
         loss_v.backward()
         optimizer.step()
+
+        if frame_idx > counter*10000:
+            obs = test_env.reset()
+            test_agent = ptan.agent.PolicyAgent(net, action_selector=ptan.actions.ArgmaxActionSelector(),
+                                                device=device, fsa=args.fsa)
+            real_done = False
+            while not real_done:
+                test_env.render()
+                actions, agent_states = test_agent([obs])
+                obs, reward, done, info = test_env.step(actions[0])
+                real_done = test_env.env.env.env.env.env.was_real_done
+            print(test_env.env.env.env.env.env.score)
+            counter += 1
 
         if frame_idx % params['target_net_sync'] < PLAY_STEPS:
             tgt_net.sync()
