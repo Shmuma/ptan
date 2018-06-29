@@ -12,6 +12,7 @@ if os.environ.get('DISPLAY','') == '':
 
 import matplotlib.pylab as plt
 import itertools
+import telemetry
 
 HYPERPARAMS = {
     'fsa-pong': {
@@ -242,6 +243,7 @@ class RewardTracker:
         f, (self.ax1, self.ax2) = plt.subplots(2, 1)
         plt.ion()
         plt.show()
+        self.tm = telemetry.ApplicationTelemetry()
 
     def __enter__(self):
         self.ts = time.time()
@@ -291,6 +293,9 @@ class RewardTracker:
         self.writer.add_scalar("speed", speed, frame)
         self.writer.add_scalar("reward_100", mean_reward, frame)
         self.writer.add_scalar("reward", reward, frame)
+
+        self.tm.metric_push_async({'metric': 'reward', 'value': mean_reward})
+
         if mean_reward > self.stop_reward:
             print("Solved in %d frames!" % frame)
             return True
