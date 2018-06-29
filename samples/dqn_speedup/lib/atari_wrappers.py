@@ -56,9 +56,11 @@ class EpisodicLifeEnv(gym.Wrapper):
         gym.Wrapper.__init__(self, env)
         self.lives = 0
         self.was_real_done  = True
+        self.score = 0
 
     def _step(self, action):
         obs, reward, done, info = self.env.step(action)
+        self.score += reward
         self.was_real_done = done
         # check current lives, make loss of life terminal,
         # then update lives to handle bonus lives
@@ -77,6 +79,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         and the learner need not know about any of this behind-the-scenes.
         """
         if self.was_real_done:
+            self.score = 0
             obs = self.env.reset(**kwargs)
         else:
             # no-op step to advance from terminal/lost life state
@@ -123,6 +126,9 @@ class MaxAndSkipEnv(gym.Wrapper):
             return max_frame, total_reward, done, info
 
 class ClipRewardEnv(gym.RewardWrapper):
+    def __init__(self, env):
+        gym.RewardWrapper.__init__(self, env)
+
     def _reward(self, reward):
         """Bin reward to {+1, 0, -1} by its sign."""
         return np.sign(reward)

@@ -13,7 +13,7 @@ from .common import utils
 
 # one single experience step
 # Experience = namedtuple('Experience', ['state', 'action', 'reward', 'done', 'recon', 'conv_out'])
-Experience = namedtuple('Experience', ['state', 'action', 'reward', 'done'])
+Experience = namedtuple('Experience', ['state', 'action', 'reward', 'done', 'score'])
 
 class ExperienceSource:
     """
@@ -44,13 +44,14 @@ class ExperienceSource:
         self.steps_count = steps_count
         self.steps_delta = steps_delta
         self.total_rewards = []
+        self.total_scores = []
         self.total_steps = []
         self.vectorized = vectorized
 
     def __iter__(self):
         # states, agent_states, histories, cur_rewards, cur_steps, \
         #     last_logics, recons, conv_outs = [], [], [], [], [], [], [], []
-        states, agent_states, histories, cur_rewards, cur_steps, last_logics = [], [], [], [], [], []
+        states, agent_states, histories, cur_rewards, cur_steps, last_logics, cur_scores = [], [], [], [], [], [], []
         env_lens = []
         for env in self.pool:
             obs = env.reset()
@@ -66,6 +67,7 @@ class ExperienceSource:
 
             for _ in range(obs_len):
                 histories.append(deque(maxlen=self.steps_count))
+                cur_scores.append(0.0)
                 cur_rewards.append(0.0)
                 cur_steps.append(0)
                 agent_states.append(self.agent.initial_state())
@@ -99,8 +101,9 @@ class ExperienceSource:
                 else:
                     next_state, r, is_done, _ = env.step(action_n[0])
                     next_state_n, r_n, is_done_n = [next_state], [r], [is_done]
+                    score_n = [env.env.env.env.env.env.score]
 
-                for ofs, (action, next_state, r, is_done) in enumerate(zip(action_n, next_state_n, r_n, is_done_n)):
+                for ofs, (action, next_state, r, is_done, score) in enumerate(zip(action_n, next_state_n, r_n, is_done_n, score_n)):
                     idx = global_ofs + ofs
                     state = states[idx]
                     # recon = recons[idx]
@@ -108,9 +111,10 @@ class ExperienceSource:
                     history = histories[idx]
 
                     cur_rewards[idx] += r
+                    cur_scores[idx] = score
                     cur_steps[idx] += 1
                     if state is not None:
-                        history.append(Experience(state=state, action=action, reward=r, done=is_done))
+                        history.append(Experience(state=state, action=action, reward=r, done=is_done, score=score))
                         # history.append(Experience(state=state, action=action, reward=r, done=is_done,
                         #                           recon=recon, conv_out=conv_out))
                     if len(history) == self.steps_count and iter_idx % self.steps_delta == 0:
@@ -123,8 +127,11 @@ class ExperienceSource:
                             history.popleft()
                         self.total_rewards.append(cur_rewards[idx])
                         self.total_steps.append(cur_steps[idx])
+                        if env.env.env.env.env.env.was_real_done:
+                            self.total_scores.append(cur_scores[idx])
                         cur_rewards[idx] = 0.0
                         cur_steps[idx] = 0
+                        cur_scores[idx] = 0.0
                         # vectorized envs are reset automatically
                         states[idx] = env.reset() if not self.vectorized else None
                         agent_states[idx] = self.agent.initial_state()
@@ -138,6 +145,13 @@ class ExperienceSource:
             self.total_rewards = []
             self.total_steps = []
         return r
+
+    def pop_total_scores(self):
+        r = self.total_scores
+        if r:
+            self.total_scores = []
+        return r
+
 
     def pop_rewards_steps(self):
         res = list(zip(self.total_rewards, self.total_steps))
@@ -164,7 +178,7 @@ def _group_list(items, lens):
 # those entries are emitted from ExperienceSourceFirstLast. Reward is discounted over the trajectory piece
 # ExperienceFirstLast = collections.namedtuple('ExperienceFirstLast', ('state', 'action', 'reward', 'last_state',
 #                                                                      'recon', 'conv_out'))
-ExperienceFirstLast = collections.namedtuple('ExperienceFirstLast', ('state', 'action', 'reward', 'last_state'))
+ExperienceFirstLast = collections.namedtuple('ExperienceFirstLast', ('state', 'action', 'reward', 'last_state', 'score'))
 
 class ExperienceSourceFirstLast(ExperienceSource):
     """
@@ -192,8 +206,9 @@ class ExperienceSourceFirstLast(ExperienceSource):
             for e in reversed(elems):
                 total_reward *= self.gamma
                 total_reward += e.reward
+            # print(exp[0].score, exp[-1].score)
             yield ExperienceFirstLast(state=exp[0].state, action=exp[0].action,
-                                      reward=total_reward, last_state=last_state)
+                                      reward=total_reward, last_state=last_state, score=exp[-1].score)
             # yield ExperienceFirstLast(state=exp[0].state, action=exp[0].action,
             #                           reward=total_reward, last_state=last_state,
             #                           recon=exp[0].recon, conv_out=exp[0].conv_out)

@@ -82,14 +82,13 @@ HYPERPARAMS = {
         'stop_reward': 500.0,
         'run_name': 'fsa-invaders',
         'replay_size': 10 ** 6,
-        # 'replay_initial': 10000,
         'replay_initial': 50000,
         'target_net_sync': 10000,
         'epsilon_frames': 10 ** 6,
         'epsilon_start': 1.0,
         'epsilon_final': 0.1,
-        'learning_rate': 0.00025,
-        # 'learning_rate': 0.00005,
+        # 'learning_rate': 0.00025,
+        'learning_rate': 0.00005,
         'gamma': 0.99,
         'batch_size': 32
     },
@@ -243,26 +242,35 @@ class RewardTracker:
         self.writer = writer
         self.stop_reward = stop_reward
         self.rewards = np.array([])
+        self.scores = np.array([])
+        self.mean_scores = np.array([])
         self.count = 0
-        plt.axis()
+        f, (self.ax1, self.ax2) = plt.subplots(2, 1)
         plt.ion()
         plt.show()
 
     def __enter__(self):
         self.ts = time.time()
         self.ts_frame = 0
-        self.total_rewards = []
+        self.total_rewards = [0]
+        self.total_scores = [0]
         return self
 
     def __exit__(self, *args):
         self.writer.close()
 
-    def reward(self, reward, frame, epsilon=None):
+    def reward(self, reward, score, frame, epsilon=None, plot=False):
         self.total_rewards.append(reward)
+        if not score:
+            self.total_scores.append(self.total_scores[-1])
+        else:
+            self.total_scores.append(score)
         speed = (frame - self.ts_frame) / (time.time() - self.ts)
         self.ts_frame = frame
         self.ts = time.time()
         mean_reward = np.mean(self.total_rewards[-100:])
+        max_score = np.max(self.total_scores)
+        mean_score = np.mean(self.total_scores[-10:])
         if not epsilon:
             epsilon_str=  ""
         elif isinstance(epsilon, float):
@@ -274,11 +282,13 @@ class RewardTracker:
             frame, len(self.total_rewards), mean_reward, speed, epsilon_str
         ))
         self.rewards = np.append(self.rewards, mean_reward)
+        self.scores= np.append(self.scores, max_score)
+        self.mean_scores = np.append(self.mean_scores, mean_score)
         self.count += 1
-        # if self.count % 10 == 0:
-        #     plt.plot(self.rewards, '-')
-        #     plt.draw()
-        #     plt.pause(0.001)
+        if plot and self.count % 10 == 0:
+            self.ax1.plot(self.rewards, 'r-')
+            self.ax2.plot(self.scores, 'bo', self.mean_scores, 'b-')
+            plt.pause(0.001)
 
 
         sys.stdout.flush()
@@ -345,7 +355,7 @@ class IndexedEpsilonTrackerNoStates:
     def frame(self, logic):
         # right now 10 serves as the increment value for frame
         self.count += 1
-        frame = int(self.count / 2)
+        frame = int(self.count )
         if frame > self.frame_count:
             new_eps = max(self.epsilon_final, self.epsilon_start - frame / self.epsilon_frames)
             for key in self.epsilon_greedy_selector.epsilon_dict:
