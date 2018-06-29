@@ -40,7 +40,7 @@ def play_func(params, net, cuda, fsa, exp_queue, fsa_nvec=None):
 
     frame_idx = 0
 
-    with common.RewardTracker(writer, params['stop_reward']) as reward_tracker:
+    with common.RewardTracker(writer, params['stop_reward'], params['telemetry']) as reward_tracker:
         while True:
             frame_idx += 1
             exp = next(exp_source_iter)
@@ -69,6 +69,8 @@ if __name__ == "__main__":
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     parser.add_argument("--fsa", default=False, action="store_true", help="Use FSA stuff")
     parser.add_argument("--plot", default=False, action="store_true", help="Plot reward")
+    parser.add_argument("--telemetry", default=False, action="store_true", help="Use telemetry")
+
     args = parser.parse_args()
 
     mp.set_start_method('spawn')
@@ -79,6 +81,7 @@ if __name__ == "__main__":
     params['batch_size'] *= PLAY_STEPS
     params['fsa'] = args.fsa
     params['plot'] = args.plot
+    params['telemetry'] = args.telemetry
     device = torch.device("cuda" if args.cuda else "cpu")
 
     env = make_env(params)
