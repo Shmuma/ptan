@@ -9,7 +9,6 @@ import torch.multiprocessing as mp
 from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common, atari_wrappers
-from gym.utils.play import play
 
 PLAY_STEPS = 4
 
