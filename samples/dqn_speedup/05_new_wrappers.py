@@ -9,6 +9,7 @@ import torch.multiprocessing as mp
 from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common, atari_wrappers
+import json
 
 PLAY_STEPS = 4
 
@@ -70,6 +71,7 @@ if __name__ == "__main__":
     parser.add_argument("--fsa", default=False, action="store_true", help="Use FSA stuff")
     parser.add_argument("--plot", default=False, action="store_true", help="Plot reward")
     parser.add_argument("--telemetry", default=False, action="store_true", help="Use telemetry")
+    parser.add_argument("--file", default='', help="Config file")
 
     args = parser.parse_args()
 
@@ -82,6 +84,13 @@ if __name__ == "__main__":
     params['fsa'] = args.fsa
     params['plot'] = args.plot
     params['telemetry'] = args.telemetry
+
+    if args.file:
+        config_file = json.loads(open(args.file, "r").read())
+        for option in params:
+            if option in config_file:
+                params[option] = config_file[option]
+
     device = torch.device("cuda" if args.cuda else "cpu")
 
     env = make_env(params)
