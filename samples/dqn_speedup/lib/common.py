@@ -125,18 +125,12 @@ HYPERPARAMS = {
 
 def unpack_batch(batch, fsa=False):
     if fsa:
-        # states, logics, actions, rewards, dones, last_states, last_logics, \
-        #     recons, conv_outs = [], [], [], [], [], [], [], [], []
         states, logics, actions, rewards, dones, last_states, last_logics = [], [], [], [], [], [], []
         for exp in batch:
             state = np.array(exp.state['image'], copy=False)
             states.append(state)
             logic = np.array(exp.state['logic'], copy=False)
             logics.append(logic)
-            # recon = np.array(exp.recon.data, copy=False)
-            # recons.append(recon)
-            # conv_out = np.array(exp.conv_out.data, copy=False)
-            # conv_outs.append(conv_out)
             actions.append(exp.action)
             rewards.append(exp.reward)
             dones.append(exp.last_state is None)
@@ -149,7 +143,6 @@ def unpack_batch(batch, fsa=False):
         return np.array(states, copy=False), np.array(logics, copy=False), np.array(actions), \
                np.array(rewards, dtype=np.float32), np.array(dones, dtype=np.uint8), \
                np.array(last_states, copy=False), np.array(last_logics, copy=False) # , \
-               # np.array(recons, copy=False), np.array(conv_outs, copy=False)
     else:
         states, actions, rewards, dones, last_states = [], [], [], [], []
         for exp in batch:
@@ -170,15 +163,11 @@ def calc_loss_dqn(batch, net, tgt_net, gamma, cuda=False, cuda_async=False, fsa=
 
 
     if fsa:
-        # states, logics, actions, rewards, dones, next_states, next_logics, \
-        #     recons, conv_outs = unpack_batch(batch, fsa)
         states, logics, actions, rewards, dones, next_states, next_logics = unpack_batch(batch, fsa)
         states_v = torch.tensor(states)
         logics_v = torch.tensor(logics)
         next_states_v = torch.tensor(next_states)
         next_logics_v = torch.tensor(next_logics)
-        # recons_v = torch.tensor(recons)
-        # conv_outs_v = torch.tensor(conv_outs)
         actions_v = torch.tensor(actions)
         rewards_v = torch.tensor(rewards)
         done_mask = torch.ByteTensor(dones)
@@ -190,8 +179,6 @@ def calc_loss_dqn(batch, net, tgt_net, gamma, cuda=False, cuda_async=False, fsa=
             actions_v = actions_v.cuda(non_blocking=cuda_async)
             rewards_v = rewards_v.cuda(non_blocking=cuda_async)
             done_mask = done_mask.cuda(non_blocking=cuda_async)
-            # recons_v = recons_v.cuda(non_blocking=cuda_async)
-            # conv_outs_v = conv_outs_v.cuda(non_blocking=cuda_async)
 
         if net.__class__.__name__ == 'FSADQNATTNMatching' or net.__class__.__name__ == 'FSADQNATTNMatchingFC':
             state_action_values, rr, cc = net({'image': states_v, 'logic': logics_v})
