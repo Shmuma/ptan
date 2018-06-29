@@ -294,7 +294,9 @@ class RewardTracker:
         self.writer.add_scalar("reward_100", mean_reward, frame)
         self.writer.add_scalar("reward", reward, frame)
 
-        self.tm.metric_push_async({'metric': 'reward', 'value': mean_reward})
+        self.tm.metric_push_async({'metric': 'mean reward', 'value': mean_reward})
+        self.tm.metric_push_async({'metric': 'mean score', 'value': mean_score})
+        self.tm.metric_push_async({'metric': 'max score', 'value': max_score})
 
         if mean_reward > self.stop_reward:
             print("Solved in %d frames!" % frame)
