@@ -9,6 +9,7 @@ import torch.multiprocessing as mp
 from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common, atari_wrappers
+import telemetry
 
 PLAY_STEPS = 4
 
@@ -70,6 +71,13 @@ if __name__ == "__main__":
     parser.add_argument("--fsa", default=False, action="store_true", help="Use FSA stuff")
     parser.add_argument("--plot", default=False, action="store_true", help="Plot reward")
     args = parser.parse_args()
+
+    tm = telemetry.ApplicationTelemetry()
+    if tm.get_status() == 0:
+        print("Connectivity to cloud succeeded!")
+    else:
+        print("Connectivity to cloud failed!")
+
 
     mp.set_start_method('spawn')
     if args.fsa:
