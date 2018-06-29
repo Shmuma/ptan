@@ -3,8 +3,16 @@ import time
 import numpy as np
 import torch
 import torch.nn as nn
+
+import os
+import matplotlib as mpl
+if os.environ.get('DISPLAY','') == '':
+    print('no display found. Using non-interactive Agg backend')
+    mpl.use('Agg')
+
 import matplotlib.pylab as plt
 import itertools
+import telemetry
 
 HYPERPARAMS = {
     'fsa-pong': {
@@ -225,7 +233,7 @@ def calc_loss_dqn(batch, net, tgt_net, gamma, cuda=False, cuda_async=False, fsa=
         return nn.MSELoss()(state_action_values, expected_state_action_values)
 
 class RewardTracker:
-    def __init__(self, writer, stop_reward):
+    def __init__(self, writer, stop_reward, telem):
         self.writer = writer
         self.stop_reward = stop_reward
         self.rewards = np.array([])
@@ -235,6 +243,9 @@ class RewardTracker:
         f, (self.ax1, self.ax2) = plt.subplots(2, 1)
         plt.ion()
         plt.show()
+        self.telemetry = telem
+        if telem:
+            self.tm = telemetry.ApplicationTelemetry()
 
     def __enter__(self):
         self.ts = time.time()
@@ -284,6 +295,12 @@ class RewardTracker:
         self.writer.add_scalar("speed", speed, frame)
         self.writer.add_scalar("reward_100", mean_reward, frame)
         self.writer.add_scalar("reward", reward, frame)
+
+        if self.telemetry:
+            self.tm.metric_push_async({'metric': 'mean reward', 'value': mean_reward})
+            self.tm.metric_push_async({'metric': 'mean score', 'value': mean_score})
+            self.tm.metric_push_async({'metric': 'max score', 'value': max_score})
+
         if mean_reward > self.stop_reward:
             print("Solved in %d frames!" % frame)
             return True
