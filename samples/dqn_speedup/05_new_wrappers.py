@@ -78,6 +78,8 @@ if __name__ == "__main__":
     else:
         print("Connectivity to cloud failed!")
 
+    tm.metric_push_async({'test': 'TEST', 'value': 1})
+    tm.metric_push_sync({'test': 'TEST', 'value': 2})
 
     mp.set_start_method('spawn')
     if args.fsa:
