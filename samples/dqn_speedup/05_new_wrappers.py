@@ -42,7 +42,7 @@ def play_func(params, net, cuda, fsa, exp_queue, fsa_nvec=None):
 
     frame_idx = 0
 
-    with common.RewardTracker(writer, params['stop_reward'], params['telemetry']) as reward_tracker:
+    with common.RewardTracker(writer, params['stop_reward'], params['telemetry'], params['plot']) as reward_tracker:
         while True:
             frame_idx += 1
             exp = next(exp_source_iter)
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     env = make_env(params)
 
     if args.fsa:
-        net = dqn_model.FSADQNParallel(env.observation_space.spaces['image'].shape,
+        net = dqn_model.FSADQNAppendToFC(env.observation_space.spaces['image'].shape,
                                            env.observation_space.spaces['logic'].nvec,
                                            env.action_space.n).to(device)
         # net = dqn_model.FSADQNConvOneLogic(env.observation_space.spaces['image'].shape,
