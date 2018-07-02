@@ -10,6 +10,8 @@ from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common, atari_wrappers
 
+from gym import wrappers
+
 PLAY_STEPS = 4
 
 
@@ -69,6 +71,7 @@ if __name__ == "__main__":
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     parser.add_argument("--fsa", default=False, action="store_true", help="Use FSA stuff")
     parser.add_argument("--plot", default=False, action="store_true", help="Plot reward")
+    parser.add_argument("--video_path", default=False, action="store", help="Directory to record video")
     parser.add_argument("--telemetry", default=False, action="store_true", help="Use telemetry")
 
     args = parser.parse_args()
@@ -83,6 +86,9 @@ if __name__ == "__main__":
     params['plot'] = args.plot
     params['telemetry'] = args.telemetry
     device = torch.device("cuda" if args.cuda else "cpu")
+
+    if type(args.video_path) is str and args.video_path[-1] is not '/':
+        args.video_path += '/'
 
     env = make_env(params)
 
@@ -117,7 +123,6 @@ if __name__ == "__main__":
     frame_idx = 0
 
     counter = 0
-    test_env = make_env(params)
     while play_proc.is_alive():
         # build up experience replay buffer?
         frame_idx += PLAY_STEPS
@@ -139,17 +144,27 @@ if __name__ == "__main__":
         loss_v.backward()
         optimizer.step()
 
-        if frame_idx > counter*10000:
+        if frame_idx > counter*1000000 and args.video_path:
+            test_env = wrappers.Monitor(make_env(params),
+                                        "{}frame{}".format(args.video_path, counter),
+                                        video_callable=lambda ep_id: True if ep_id < 3 else False,
+                                        force=True)
             obs = test_env.reset()
             test_agent = ptan.agent.PolicyAgent(net, action_selector=ptan.actions.ArgmaxActionSelector(),
                                                 device=device, fsa=args.fsa)
             real_done = False
             while not real_done:
-                test_env.render()
+                if args.plot:
+                    test_env.render()
+                    print(obs)
                 actions, agent_states = test_agent([obs])
                 obs, reward, done, info = test_env.step(actions[0])
-                real_done = test_env.env.env.env.env.env.was_real_done
-            print(test_env.env.env.env.env.env.score)
+                real_done = test_env.env.env.env.env.env.env.was_real_done
+                if real_done:
+                    print(test_env.env.env.env.env.env.env.score)
+                if done:
+                    obs = test_env.reset()
+            test_env.close()
             counter += 1
 
         if frame_idx % params['target_net_sync'] < PLAY_STEPS:
