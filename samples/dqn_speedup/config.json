@@ -2,6 +2,7 @@
   "epsilon_frames": 2000000,
   "epsilon_start": 2.0,
   "epsilon_final": 0.2,
-  "learning rate": 0.00006,
-  "gamma": 0.98
+  "learning_rate": 0.00006,
+  "gamma": 0.98,
+  "dqn_model": "FSADQNAppendToFC"
 }

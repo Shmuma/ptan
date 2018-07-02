@@ -21,7 +21,8 @@ jobs = [
       "epsilon_start": 2.0,
       "epsilon_final": 0.2,
       "learning_rate": 0.00006,
-      "gamma": 0.98
+      "gamma": 0.98,
+      "dqn_model": "FSADQNAppendToFC"
     },
     {
         "epsilon_frames": 3000000,

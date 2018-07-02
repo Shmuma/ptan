@@ -85,11 +85,15 @@ if __name__ == "__main__":
     params['plot'] = args.plot
     params['telemetry'] = args.telemetry
 
+    model = None
+
     if args.file:
         config_file = json.loads(open(args.file, "r").read())
         for option in params:
             if option in config_file:
                 params[option] = config_file[option]
+        if 'dqn_model' in config_file:
+            model = config_file['dqn_model']
 
     device = torch.device("cuda" if args.cuda else "cpu")
 
@@ -103,6 +107,25 @@ if __name__ == "__main__":
         #                        env.observation_space.spaces['logic'].nvec, env.action_space.n).to(device)
     else:
         net = dqn_model.DQN(env.observation_space.shape, env.action_space.n).to(device)
+
+    dqn_models = {
+        'FSADQN': dqn_model.FSADQN,
+        'FSADQNParallel': dqn_model.FSADQNParallel,
+        'FSADQNIndexOutput' : dqn_model.FSADQNIndexOutput,
+        'FSADQNATTNMatchingFC': dqn_model.FSADQNATTNMatchingFC,
+        'FSADQNATTNMatching': dqn_model.FSADQNATTNMatching,
+        'FSADQNAppendToFC': dqn_model.FSADQNAppendToFC,
+        'FSADQNAppendToFCL1Conv': dqn_model.FSADQNAppendToFCL1Conv,
+        'FSADQNIndexConv': dqn_model.FSADQNIndexConv,
+        'FSADQNIndexConvOneLogic': dqn_model.FSADQNIndexConvOneLogic,
+        'FSADQNIndexATTN': dqn_model.FSADQNIndexATTN
+    }
+
+    if model and model in dqn_models:
+        net = dqn_models[model](env.observation_space.spaces['image'].shape,
+                                       env.observation_space.spaces['logic'].nvec,
+                                       env.action_space.n).to(device)
+
     tgt_net = ptan.agent.TargetNet(net)
 
     buffer = ptan.experience.ExperienceReplayBuffer(experience_source=None, buffer_size=params['replay_size'])
