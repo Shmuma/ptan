@@ -13,7 +13,6 @@ if os.environ.get('DISPLAY','') == '':
 import matplotlib.pylab as plt
 import itertools
 import telemetry
-import os
 
 HYPERPARAMS = {
     'fsa-pong': {

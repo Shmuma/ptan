@@ -72,7 +72,7 @@ if __name__ == "__main__":
     parser.add_argument("--plot", default=False, action="store_true", help="Plot reward")
     parser.add_argument("--telemetry", default=False, action="store_true", help="Use telemetry")
     parser.add_argument("--file", default='', help="Config file")
-    parser.add_argument("--stop", default=0, type=int, help="NUmber of frames to force stop at")
+    parser.add_argument("--stop", default=0, type=int, help="Number of frames to force stop at")
 
     args = parser.parse_args()
 
