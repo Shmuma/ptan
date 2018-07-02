@@ -13,6 +13,7 @@ if os.environ.get('DISPLAY','') == '':
 import matplotlib.pylab as plt
 import itertools
 import telemetry
+import os
 
 HYPERPARAMS = {
     'fsa-pong': {
@@ -300,6 +301,10 @@ class RewardTracker:
             self.tm.metric_push_async({'metric': 'mean reward', 'value': mean_reward})
             self.tm.metric_push_async({'metric': 'mean score', 'value': mean_score})
             self.tm.metric_push_async({'metric': 'max score', 'value': max_score})
+
+        with open("results/output.txt", "a") as f:
+            f.write('mean_reward: ' + str(mean_reward) + ', mean_score: '
+                            + str(mean_score) + ', max_score: ' + str(max_score) + '\n')
 
         if mean_reward > self.stop_reward:
             print("Solved in %d frames!" % frame)
