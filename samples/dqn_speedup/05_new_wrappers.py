@@ -72,6 +72,7 @@ if __name__ == "__main__":
     parser.add_argument("--plot", default=False, action="store_true", help="Plot reward")
     parser.add_argument("--telemetry", default=False, action="store_true", help="Use telemetry")
     parser.add_argument("--file", default='', help="Config file")
+    parser.add_argument("--config", default='', help="Config string")
 
     args = parser.parse_args()
 
@@ -90,7 +91,12 @@ if __name__ == "__main__":
         for option in params:
             if option in config_file:
                 params[option] = config_file[option]
-
+    if args.config:
+        config = json.loads(args.config)
+        for option in params:
+            if option in config:
+                params[option] = config[option]
+    
     device = torch.device("cuda" if args.cuda else "cpu")
 
     env = make_env(params)
