@@ -72,6 +72,7 @@ if __name__ == "__main__":
     parser.add_argument("--plot", default=False, action="store_true", help="Plot reward")
     parser.add_argument("--telemetry", default=False, action="store_true", help="Use telemetry")
     parser.add_argument("--file", default='', help="Config file")
+    parser.add_argument("--stop", default=0, type=int, help="NUmber of frames to force stop at")
 
     args = parser.parse_args()
 
@@ -149,6 +150,9 @@ if __name__ == "__main__":
     frame_idx = 0
 
     while play_proc.is_alive():
+        if args.stop and frame_idx > args.stop:
+            play_proc.terminate()
+            break
         # build up experience replay buffer?
         frame_idx += PLAY_STEPS
         for _ in range(PLAY_STEPS):
@@ -171,3 +175,4 @@ if __name__ == "__main__":
 
         if frame_idx % params['target_net_sync'] < PLAY_STEPS:
             tgt_net.sync()
+
