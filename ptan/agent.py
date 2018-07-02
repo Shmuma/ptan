@@ -87,7 +87,6 @@ class DQNAgent(BaseAgent):
                     states['image'] = states['image'].to(self.device)
                 if torch.is_tensor(states['logic']):
                     states['logic'] = states['logic'].to(self.device)
-        # recon, conv_output = None, None
         if self.dqn_model.__class__.__name__ == 'FSADQNATTNMatching' or self.dqn_model.__class__.__name__ == 'FSADQNATTNMatchingFC':
             q_v, recon, conv_output = self.dqn_model(states)
         elif self.dqn_model.__class__.__name__ == 'FSADQNAppendToFCL1Conv':
@@ -101,7 +100,7 @@ class DQNAgent(BaseAgent):
             actions = self.action_selector(q, tuple(states['logic'][0][-1].cpu().numpy()))
         else:
             actions = self.action_selector(q)
-        return actions, agent_states # , recon, conv_output
+        return actions, agent_states
 
 
 class TargetNet:
@@ -135,12 +134,13 @@ class PolicyAgent(BaseAgent):
     """
     # TODO: unify code with DQNAgent, as only action selector is differs.
     def __init__(self, model, action_selector=actions.ProbabilityActionSelector(), device="cpu",
-                 apply_softmax=False, preprocessor=default_states_preprocessor):
+                 fsa=False, apply_softmax=False, preprocessor=default_states_preprocessor):
         self.model = model
         self.action_selector = action_selector
         self.device = device
         self.apply_softmax = apply_softmax
         self.preprocessor = preprocessor
+        self.fsa = fsa
 
     def __call__(self, states, agent_states=None):
         """
@@ -151,16 +151,20 @@ class PolicyAgent(BaseAgent):
         if agent_states is None:
             agent_states = [None] * len(states)
         if self.preprocessor is not None:
-            states = self.preprocessor(states)
+            states = self.preprocessor(states, self.fsa)
             if torch.is_tensor(states):
                 states = states.to(self.device)
+            elif self.fsa:
+                if torch.is_tensor(states['image']):
+                    states['image'] = states['image'].to(self.device)
+                if torch.is_tensor(states['logic']):
+                    states['logic'] = states['logic'].to(self.device)
         probs_v = self.model(states)
         if self.apply_softmax:
             probs_v = F.softmax(probs_v, dim=1)
         probs = probs_v.data.cpu().numpy()
         actions = self.action_selector(probs)
         return np.array(actions), agent_states
-
 
 class ActorCriticAgent(BaseAgent):
     """

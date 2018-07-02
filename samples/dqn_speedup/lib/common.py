@@ -12,7 +12,10 @@ if os.environ.get('DISPLAY','') == '':
 
 import matplotlib.pylab as plt
 import itertools
-import telemetry
+try:
+    import telemetry
+except:
+    print('couldnt find telemetry package')
 
 HYPERPARAMS = {
     'fsa-pong': {
