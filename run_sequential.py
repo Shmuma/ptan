@@ -83,7 +83,12 @@ if __name__ == "__main__":
 
     while True:
         # check if running job has finished
-        result = subprocess.check_output(['ngc', 'batch', 'get', str(job_id)])
+        try:
+            result = subprocess.check_output(['ngc', 'batch', 'get', str(job_id)])
+        except subprocess.CalledProcessError:
+            print("Got an error, retrying in 10")
+            time.sleep(10)
+            continue
         if args.v:
             print(result)
         json_data = json.loads(result)
