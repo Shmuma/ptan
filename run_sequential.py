@@ -8,7 +8,8 @@ Before running, run 'ngc config set' and set the following:
 Debug Mode: False
 CLI output format type: json
 """
-frame_stop = 10000
+job_names = "testjob"
+frame_stop = 30000
 
 jobs = [
     {
@@ -58,7 +59,7 @@ class JobControl:
         command = "echo '" + config + "' > config.json && opt/conda/envs/pytorch-py3.6/bin/python " \
                                       "/workspace/ptan/samples/dqn_speedup/05_new_wrappers.py " \
                                       "--cuda --fsa --telemetry --file config.json --stop " + str(frame_stop)
-        runline = self.get_job("testjob" + str(self.jobcounter), command)
+        runline = self.get_job(job_names + str(self.jobcounter), command)
         if self.verbose:
             print(' '.join(runline))
         result = subprocess.check_output(' '.join(runline), shell=True)
