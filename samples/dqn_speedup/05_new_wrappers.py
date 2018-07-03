@@ -10,6 +10,7 @@ from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common, atari_wrappers
 import json
+import os
 
 from gym import wrappers
 
@@ -72,7 +73,7 @@ if __name__ == "__main__":
     parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
     parser.add_argument("--fsa", default=False, action="store_true", help="Use FSA stuff")
     parser.add_argument("--plot", default=False, action="store_true", help="Plot reward")
-    parser.add_argument("--video_path", default=False, action="store", help="Directory to record video")
+    parser.add_argument("--video", default=False, action="store_true", help="Record video")
     parser.add_argument("--telemetry", default=False, action="store_true", help="Use telemetry")
     parser.add_argument("--file", default='', help="Config file")
     parser.add_argument("--stop", default=0, type=int, help="Number of frames to force stop at")
@@ -101,8 +102,15 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if args.cuda else "cpu")
 
-    if type(args.video_path) is str and args.video_path[-1] is not '/':
-        args.video_path += '/'
+    if args.video:
+        if args.telemetry:
+            video_path = 'results/video'
+        else:
+            curdir = os.path.abspath(__file__)
+            video_path = os.path.abspath(os.path.join(curdir, '../../../results/video'))
+
+        if not os.path.exists(video_path):
+            os.makedirs(video_path)
 
     env = make_env(params)
 
@@ -180,9 +188,9 @@ if __name__ == "__main__":
         loss_v.backward()
         optimizer.step()
 
-        if frame_idx > counter*1000000 and args.video_path:
+        if frame_idx > counter*1000000 and args.video:
             test_env = wrappers.Monitor(make_env(params),
-                                        "{}frame{}".format(args.video_path, counter),
+                                        "{}/frame{}".format(video_path, counter),
                                         video_callable=lambda ep_id: True if ep_id < 3 else False,
                                         force=True)
             obs = test_env.reset()

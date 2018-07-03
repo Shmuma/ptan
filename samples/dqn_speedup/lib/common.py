@@ -250,6 +250,16 @@ class RewardTracker:
         self.telemetry = telem
         if telem:
             self.tm = telemetry.ApplicationTelemetry()
+        if telem:
+            if not os.path.exists('results'):
+                os.makedirs('results')
+            self.outfile = 'results/output.txt'
+        else:
+            curdir = os.path.abspath(__file__)
+            results = os.path.abspath(os.path.join(curdir, '../../../../results'))
+            if not os.path.exists(results):
+                os.makedirs(results)
+            self.outfile = os.path.join(results, 'output.txt')
 
     def __enter__(self):
         self.ts = time.time()
@@ -305,9 +315,10 @@ class RewardTracker:
             self.tm.metric_push_async({'metric': 'mean score', 'value': mean_score})
             self.tm.metric_push_async({'metric': 'max score', 'value': max_score})
 
-        with open("results/output.txt", "a") as f:
-            f.write('mean_reward: ' + str(mean_reward) + ', mean_score: '
-                            + str(mean_score) + ', max_score: ' + str(max_score) + '\n')
+        with open(self.outfile, "a") as f:
+            f.write("%d: done %d games, mean reward %.3f, mean score %.3f, max score %.3f \n" % (
+            frame, len(self.total_rewards), mean_reward, mean_score, max_score
+            ))
 
         if mean_reward > self.stop_reward:
             print("Solved in %d frames!" % frame)
