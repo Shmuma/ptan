@@ -9,6 +9,7 @@ import torch.multiprocessing as mp
 from tensorboardX import SummaryWriter
 
 from lib import dqn_model, common, atari_wrappers
+import json
 
 from gym import wrappers
 
@@ -73,6 +74,8 @@ if __name__ == "__main__":
     parser.add_argument("--plot", default=False, action="store_true", help="Plot reward")
     parser.add_argument("--video_path", default=False, action="store", help="Directory to record video")
     parser.add_argument("--telemetry", default=False, action="store_true", help="Use telemetry")
+    parser.add_argument("--file", default='', help="Config file")
+    parser.add_argument("--stop", default=0, type=int, help="Number of frames to force stop at")
 
     args = parser.parse_args()
 
@@ -85,6 +88,17 @@ if __name__ == "__main__":
     params['fsa'] = args.fsa
     params['plot'] = args.plot
     params['telemetry'] = args.telemetry
+
+    model = None
+
+    if args.file:
+        config_file = json.loads(open(args.file, "r").read())
+        for option in params:
+            if option in config_file:
+                params[option] = config_file[option]
+        if 'dqn_model' in config_file:
+            model = config_file['dqn_model']
+
     device = torch.device("cuda" if args.cuda else "cpu")
 
     if type(args.video_path) is str and args.video_path[-1] is not '/':
@@ -100,6 +114,25 @@ if __name__ == "__main__":
         #                        env.observation_space.spaces['logic'].nvec, env.action_space.n).to(device)
     else:
         net = dqn_model.DQN(env.observation_space.shape, env.action_space.n).to(device)
+
+    dqn_models = {
+        'FSADQN': dqn_model.FSADQN,
+        'FSADQNParallel': dqn_model.FSADQNParallel,
+        'FSADQNIndexOutput' : dqn_model.FSADQNIndexOutput,
+        'FSADQNATTNMatchingFC': dqn_model.FSADQNATTNMatchingFC,
+        'FSADQNATTNMatching': dqn_model.FSADQNATTNMatching,
+        'FSADQNAppendToFC': dqn_model.FSADQNAppendToFC,
+        'FSADQNAppendToFCL1Conv': dqn_model.FSADQNAppendToFCL1Conv,
+        'FSADQNIndexConv': dqn_model.FSADQNIndexConv,
+        'FSADQNIndexConvOneLogic': dqn_model.FSADQNIndexConvOneLogic,
+        'FSADQNIndexATTN': dqn_model.FSADQNIndexATTN
+    }
+
+    if model and model in dqn_models:
+        net = dqn_models[model](env.observation_space.spaces['image'].shape,
+                                       env.observation_space.spaces['logic'].nvec,
+                                       env.action_space.n).to(device)
+
     tgt_net = ptan.agent.TargetNet(net)
 
     buffer = ptan.experience.ExperienceReplayBuffer(experience_source=None, buffer_size=params['replay_size'])
@@ -124,6 +157,9 @@ if __name__ == "__main__":
 
     counter = 0
     while play_proc.is_alive():
+        if args.stop and frame_idx > args.stop:
+            play_proc.terminate()
+            break
         # build up experience replay buffer?
         frame_idx += PLAY_STEPS
         for _ in range(PLAY_STEPS):
@@ -169,3 +205,4 @@ if __name__ == "__main__":
 
         if frame_idx % params['target_net_sync'] < PLAY_STEPS:
             tgt_net.sync()
+
