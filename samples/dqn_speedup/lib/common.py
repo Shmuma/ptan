@@ -236,16 +236,17 @@ def calc_loss_dqn(batch, net, tgt_net, gamma, cuda=False, cuda_async=False, fsa=
         return nn.MSELoss()(state_action_values, expected_state_action_values)
 
 class RewardTracker:
-    def __init__(self, writer, stop_reward, telem):
+    def __init__(self, writer, stop_reward, telem=False, plot=False):
         self.writer = writer
         self.stop_reward = stop_reward
         self.rewards = np.array([])
         self.scores = np.array([])
         self.mean_scores = np.array([])
         self.count = 0
-        f, (self.ax1, self.ax2) = plt.subplots(2, 1)
-        plt.ion()
-        plt.show()
+        if plot:
+            f, (self.ax1, self.ax2) = plt.subplots(2, 1)
+            plt.ion()
+            plt.show()
         self.telemetry = telem
         if telem:
             self.tm = telemetry.ApplicationTelemetry()
