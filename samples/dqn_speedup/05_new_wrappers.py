@@ -201,7 +201,7 @@ if __name__ == "__main__":
         loss_v.backward()
         optimizer.step()
 
-        if frame_idx > counter*1000000 and args.video:
+        if frame_idx > counter*1000 and args.video:
             test_env = wrappers.Monitor(make_env(params),
                                         "{}/frame{}".format(video_path, counter),
                                         video_callable=lambda ep_id: True if ep_id < 3 else False,
@@ -213,7 +213,6 @@ if __name__ == "__main__":
             while not real_done:
                 if args.plot:
                     test_env.render()
-                    print(obs)
                 actions, agent_states = test_agent([obs])
                 obs, reward, done, info = test_env.step(actions[0])
                 real_done = test_env.env.env.env.env.env.env.was_real_done
