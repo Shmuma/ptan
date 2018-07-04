@@ -12,6 +12,8 @@ from lib import dqn_model, common, atari_wrappers
 import json
 import os
 
+import pickle
+
 from gym import wrappers
 
 PLAY_STEPS = 4
@@ -102,11 +104,19 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if args.cuda else "cpu")
 
+    curdir = os.path.abspath(__file__)
+    if args.telemetry:
+        model_path = 'results/model'
+    else:
+        model_path = os.path.abspath(os.path.join(curdir, '../../../results/model'))
+
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+
     if args.video:
         if args.telemetry:
             video_path = 'results/video'
         else:
-            curdir = os.path.abspath(__file__)
             video_path = os.path.abspath(os.path.join(curdir, '../../../results/video'))
 
         if not os.path.exists(video_path):
@@ -115,13 +125,15 @@ if __name__ == "__main__":
     env = make_env(params)
 
     if args.fsa:
-        net = dqn_model.FSADQNAppendToFC(env.observation_space.spaces['image'].shape,
+        net = dqn_model.FSADQNParallel(env.observation_space.spaces['image'].shape,
                                            env.observation_space.spaces['logic'].nvec,
                                            env.action_space.n).to(device)
+        model_name = 'FSADQNParallel'
         # net = dqn_model.FSADQNConvOneLogic(env.observation_space.spaces['image'].shape,
         #                        env.observation_space.spaces['logic'].nvec, env.action_space.n).to(device)
     else:
         net = dqn_model.DQN(env.observation_space.shape, env.action_space.n).to(device)
+        model_name = 'DQN'
 
     dqn_models = {
         'FSADQN': dqn_model.FSADQN,
@@ -140,6 +152,7 @@ if __name__ == "__main__":
         net = dqn_models[model](env.observation_space.spaces['image'].shape,
                                        env.observation_space.spaces['logic'].nvec,
                                        env.action_space.n).to(device)
+        model_name = model
 
     tgt_net = ptan.agent.TargetNet(net)
 
@@ -214,3 +227,31 @@ if __name__ == "__main__":
         if frame_idx % params['target_net_sync'] < PLAY_STEPS:
             tgt_net.sync()
 
+    eval_runs = 10
+    eval_env = make_env(params)
+    obs = eval_env.reset()
+    eval_agent = ptan.agent.PolicyAgent(net, action_selector=ptan.actions.ArgmaxActionSelector(),
+                                        device=device, fsa=args.fsa)
+    score = 0
+    for i in range(eval_runs):
+        real_done = False
+        while not real_done:
+            actions, agent_states = eval_agent([obs])
+            obs, reward, done, info = eval_env.step(actions[0])
+            real_done = eval_env.env.env.env.env.env.was_real_done
+            if real_done:
+                score += eval_env.env.env.env.env.env.score
+                print("test: {} | score: {}".format(i, eval_env.env.env.env.env.env.score))
+            if done:
+                obs = eval_env.reset()
+    eval_env.close()
+    score /= eval_runs
+
+    model_file = "/model.pth"
+    torch.save(net.state_dict(), model_path + model_file)
+
+    data_file = "/data.pkl"
+    save_data = [score, model_name, params, args]
+
+    with open(model_path + data_file, 'wb') as output:
+        pickle.dump(save_data, output, pickle.HIGHEST_PROTOCOL)
