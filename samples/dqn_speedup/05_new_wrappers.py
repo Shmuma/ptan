@@ -83,13 +83,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if distutils.spawn.find_executable('avconv') is not None:
-        print("using avconv")
-    elif distutils.spawn.find_executable('ffmpeg') is not None:
-        print("using ffmpeg")
-    else:
-        print("has neither avconv nor ffmpeg")
-
     mp.set_start_method('spawn')
     if args.fsa:
         params = common.HYPERPARAMS['fsa-invaders']
@@ -129,6 +122,13 @@ if __name__ == "__main__":
 
         if not os.path.exists(video_path):
             os.makedirs(video_path)
+
+    if distutils.spawn.find_executable('avconv') is not None:
+        print('using avconv')
+    elif distutils.spawn.find_executable('ffmpeg') is not None:
+        print('using ffmpeg')
+    else:
+        print('has neither avconv nor ffmpeg')
 
     env = make_env(params)
 
