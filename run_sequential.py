@@ -20,7 +20,8 @@ jobs = [
       "epsilon_final": 0.1,
       "learning_rate": 0.00005,
       "gamma": 0.99,
-      "fsa": True
+      "fsa": True,
+      "machine": "ngcv8"
     },
     {
       "epsilon_frames": 10 ** 6 / 2,
@@ -28,6 +29,8 @@ jobs = [
       "epsilon_final": 0.1,
       "learning_rate": 0.00005,
       "gamma": 0.99,
+      "fsa": True,
+      "machine": "ngcv4"
     },
     {
       "epsilon_frames": 10 ** 6 * 2,
@@ -47,11 +50,11 @@ class JobControl:
         self.jobs = job_list
         self.verbose = v
 
-    def get_job(self, name, command):
+    def get_job(self, name, command, machine="ngcv1"):
         name = '"'+name+'"'
         command = '"' + command + '"'
-        return ['ngc batch run', '--name', name, '--image', '"lucasl_drl_00/fsa-atari:0.1"', '--ace', 'nv-us-west-2',
-                '--instance', 'ngcv2', '--commandline', command,  '--result', '/results']
+        return ['ngc batch run', '--name', name, '--image', '"lucasl_drl_00/fsa-atari:0.1.1"', '--ace', 'nv-us-west-2',
+                '--instance', machine , '--commandline', command,  '--result', '/results']
 
     def run_next_job(self):
         if self.jobcounter >= len(self.jobs):
@@ -62,7 +65,12 @@ class JobControl:
         command = "echo '" + config + "' > config.json && opt/conda/envs/pytorch-py3.6/bin/python " \
                                       "/workspace/ptan/samples/dqn_speedup/05_new_wrappers.py " \
                                       "--cuda --telemetry --file config.json --stop " + str(frame_stop)
-        runline = self.get_job(job_names + str(self.jobcounter), command)
+        if "machine" in self.jobs[self.jobcounter]:
+            runline = self.get_job(job_names + str(self.jobcounter), command,
+                                   self.jobs[self.jobcounter]["machine"])
+        else:
+            runline = self.get_job(job_names + str(self.jobcounter), command)
+
         if self.verbose:
             print(' '.join(runline))
         result = subprocess.check_output(' '.join(runline), shell=True)
@@ -83,6 +91,7 @@ class JobControl:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", default=False, action="store_true", help="Enable verbose output")
+
     args = parser.parse_args()
 
     control = JobControl(jobs, args.v)
