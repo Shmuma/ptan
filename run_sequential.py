@@ -11,7 +11,7 @@ Debug Mode: False
 CLI output format type: json
 """
 job_names = "testparallel"
-frame_stop = 10000000
+frame_stop = 5001
 
 jobs = [
     {
@@ -49,7 +49,7 @@ class JobControl:
         name = '"'+name+'"'
         command = '"' + command + '"'
         return ['ngc batch run', '--name', name, '--image', '"lucasl_drl_00/fsa-atari:0.1"', '--ace', 'nv-us-west-2',
-                '--instance', 'ngcv2', '--commandline', command,  '--result', '/results']
+                '--instance', 'ngcv4', '--commandline', command,  '--result', '/results']
 
     def run_next_job(self):
         if self.jobcounter >= len(self.jobs):
@@ -59,7 +59,7 @@ class JobControl:
         config = '\\"'.join(config.split('"'))  # escape quotes
         command = "echo '" + config + "' > config.json && opt/conda/envs/pytorch-py3.6/bin/python " \
                                       "/workspace/ptan/samples/dqn_speedup/05_new_wrappers.py " \
-                                      "--cuda --fsa --telemetry --file config.json --stop " + str(frame_stop)
+                                      "--cuda --fsa --telemetry --video --file config.json --stop " + str(frame_stop)
         runline = self.get_job(job_names + str(self.jobcounter), command)
         if self.verbose:
             print(' '.join(runline))

@@ -90,10 +90,10 @@ HYPERPARAMS = {
     },
     'fsa-invaders': {
         'env_name': "fsa-SpaceInvadersNoFrameskip-v4",
-        'stop_reward': 500.0,
+        'stop_reward': 25.0,
         'run_name': 'fsa-invaders',
         'replay_size': 10 ** 6,
-        'replay_initial': 50000,
+        'replay_initial': 500,
         'target_net_sync': 10000,
         'epsilon_frames': 10 ** 6,
         'epsilon_start': 1.0,
@@ -101,7 +101,8 @@ HYPERPARAMS = {
         # 'learning_rate': 0.00025,
         'learning_rate': 0.00005,
         'gamma': 0.99,
-        'batch_size': 32
+        'batch_size': 32,
+        'video_interval': 1000
     },
     'mr': {
         'env_name': "MontezumaRevengeNoFrameskip-v4",
