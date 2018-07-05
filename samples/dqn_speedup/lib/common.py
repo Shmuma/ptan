@@ -317,7 +317,7 @@ class RewardTracker:
             self.tm.metric_push_async({'metric': 'max score', 'value': max_score})
 
         with open(self.outfile, "a") as f:
-            f.write("%d: done %d games, mean reward %.3f, mean score %.3f, max score %.3f \n" % (
+            f.write("frames %d, games %d, mean reward %.3f, mean score %.3f, max score %.3f \n" % (
             frame, len(self.total_rewards), mean_reward, mean_score, max_score
             ))
 
