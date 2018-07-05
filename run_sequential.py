@@ -3,35 +3,36 @@ import json
 import time
 import argparse
 
+import download_results
+
 """
 Before running, run 'ngc config set' and set the following:
 Debug Mode: False
 CLI output format type: json
 """
-job_names = "testjob"
-frame_stop = 5000
+job_names = "testparallel"
+frame_stop = 10000000
 
 jobs = [
     {
-      "epsilon_frames": 1000000,
+      "epsilon_frames": 10 ** 6,
       "epsilon_start": 1.0,
       "epsilon_final": 0.1,
       "learning_rate": 0.00005,
       "gamma": 0.99
     },
     {
-      "epsilon_frames": 2000000,
-      "epsilon_start": 2.0,
-      "epsilon_final": 0.2,
-      "learning_rate": 0.00006,
-      "gamma": 0.98,
-      "dqn_model": "FSADQNAppendToFC"
+      "epsilon_frames": 10 ** 6 / 2,
+      "epsilon_start": 1.0,
+      "epsilon_final": 0.1,
+      "learning_rate": 0.00005,
+      "gamma": 0.99,
     },
     {
-        "epsilon_frames": 3000000,
-        "epsilon_start": 3.0,
-        "epsilon_final": 0.3,
-        "learning_rate": 0.00004,
+        "epsilon_frames": 10 ** 6 * 2,
+        "epsilon_start": 1.0,
+        "epsilon_final": 0.1,
+        "learning_rate": 0.00005,
         "gamma": 0.99
     }
 
@@ -48,7 +49,7 @@ class JobControl:
         name = '"'+name+'"'
         command = '"' + command + '"'
         return ['ngc batch run', '--name', name, '--image', '"lucasl_drl_00/fsa-atari:0.1"', '--ace', 'nv-us-west-2',
-                '--instance', 'ngcv1', '--commandline', command,  '--result', '/results']
+                '--instance', 'ngcv2', '--commandline', command,  '--result', '/results']
 
     def run_next_job(self):
         if self.jobcounter >= len(self.jobs):
@@ -58,7 +59,7 @@ class JobControl:
         config = '\\"'.join(config.split('"'))  # escape quotes
         command = "echo '" + config + "' > config.json && opt/conda/envs/pytorch-py3.6/bin/python " \
                                       "/workspace/ptan/samples/dqn_speedup/05_new_wrappers.py " \
-                                      "--cuda --fsa --telemetry --video --file config.json --stop " + str(frame_stop)
+                                      "--cuda --fsa --telemetry --file config.json --stop " + str(frame_stop)
         runline = self.get_job(job_names + str(self.jobcounter), command)
         if self.verbose:
             print(' '.join(runline))
@@ -84,6 +85,8 @@ if __name__ == "__main__":
     # start the first job
     job_id = control.run_next_job()
 
+    successful_jobs = []
+
     while True:
         # check if running job has finished
         try:
@@ -99,8 +102,14 @@ if __name__ == "__main__":
         print("Job Status: ", status)
 
         if status == "FINISHED_SUCCESS" or status == "FAILED":
+            if status == "FINISHED_SUCCESS":
+                successful_jobs.append(job_id)
             job_id = control.run_next_job()
             if job_id == None:
-                exit()
+                break
 
-        time.sleep(60)  # wait a minute before checking again
+        time.sleep(30)  # wait a minute before checking again
+
+    check_ip = subprocess.check_output(["ifconfig"])
+    if b"128.30.25" in check_ip:
+        download_results.get_jobs(successful_jobs)
