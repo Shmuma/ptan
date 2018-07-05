@@ -1,13 +1,6 @@
 import subprocess
 import json
-import time
-import argparse
 
-"""
-Before running, run 'ngc config set' and set the following:
-Debug Mode: False
-CLI output format type: json
-"""
 frame_stop = 5000
 
 jobs = [
