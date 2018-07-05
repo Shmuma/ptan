@@ -202,10 +202,12 @@ if __name__ == "__main__":
         optimizer.step()
 
         if frame_idx > counter*params['video_interval'] and args.video:
+            print('about to make test env')
             test_env = wrappers.Monitor(make_env(params),
                                         "{}/frame{}".format(video_path, counter),
                                         video_callable=lambda ep_id: True if ep_id < 3 else False,
                                         force=True)
+            print('made test env')
             obs = test_env.reset()
             test_agent = ptan.agent.PolicyAgent(net, action_selector=ptan.actions.ArgmaxActionSelector(),
                                                 device=device, fsa=args.fsa)
@@ -223,6 +225,9 @@ if __name__ == "__main__":
                     print(test_env.env.env.env.env.env.env.score)
                 if done:
                     obs = test_env.reset()
+
+            model_video_path = "{}/frame{}/model.pth".format(video_path, counter)
+            torch.save(net.state_dict(), model_video_path)
             test_env.close()
             counter += 1
 

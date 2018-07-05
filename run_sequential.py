@@ -19,7 +19,9 @@ jobs = [
       "epsilon_start": 1.0,
       "epsilon_final": 0.1,
       "learning_rate": 0.00005,
-      "gamma": 0.99
+      "gamma": 0.99,
+      "replay_initial": 500,
+      "video_interval": 1000,
     },
     {
       "epsilon_frames": 10 ** 6 / 2,
@@ -27,13 +29,17 @@ jobs = [
       "epsilon_final": 0.1,
       "learning_rate": 0.00005,
       "gamma": 0.99,
+      "replay_initial": 500,
+      "video_interval": 1000,
     },
     {
         "epsilon_frames": 10 ** 6 * 2,
         "epsilon_start": 1.0,
         "epsilon_final": 0.1,
         "learning_rate": 0.00005,
-        "gamma": 0.99
+        "gamma": 0.99,
+        "replay_initial": 500,
+        "video_interval": 1000,
     }
 
 ]  # list of dictionaries (json)
