@@ -211,10 +211,13 @@ if __name__ == "__main__":
                                                 device=device, fsa=args.fsa)
             real_done = False
             while not real_done:
+                print('start of while loop')
                 if args.plot:
                     test_env.render()
                 actions, agent_states = test_agent([obs])
+                print('about to step')
                 obs, reward, done, info = test_env.step(actions[0])
+                print('stepped')
                 real_done = test_env.env.env.env.env.env.env.was_real_done
                 if real_done:
                     print(test_env.env.env.env.env.env.env.score)
