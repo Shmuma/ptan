@@ -68,15 +68,17 @@ class JobControl:
                 '--instance', machine , '--commandline', command,  '--result', '/results']
 
     def run_next_job(self):
-        if self.jobcounter >= len(self.jobs):
+        if self.jobcounter >= len(self.jobs):  # end of job list
             self.job_id = None
             return None
+
         config = json.dumps(self.jobs[self.jobcounter])
         config = ''.join(config.split())  # remove spaces from config string
         config = '\\"'.join(config.split('"'))  # escape quotes
         command = "echo '" + config + "' > config.json && opt/conda/envs/pytorch-py3.6/bin/python " \
                                       "/workspace/ptan/samples/dqn_speedup/05_new_wrappers.py " \
                                       "--cuda --telemetry --file config.json --stop " + str(frame_stop)
+
         if "machine" in self.jobs[self.jobcounter]:
             runline = self.get_job(self.job_name + str(self.jobcounter), command,
                                    self.jobs[self.jobcounter]["machine"])
@@ -95,10 +97,9 @@ class JobControl:
             data = json.loads(result)[0]
 
         self.jobcounter += 1
-        job_id = data["id"]
-        self.job_id = job_id
-        print("Job Id is ", job_id)
-        return job_id
+        self.job_id = data["id"]
+        print("Job Id is ", self.job_id)
+        return self.job_id
 
     def get_job_id(self):
         return self.job_id
@@ -141,13 +142,12 @@ if __name__ == "__main__":
             try:
                 result = subprocess.check_output(['ngc', 'batch', 'get', str(job_id)])
             except subprocess.CalledProcessError:
-                print("Got an error, retrying in 10")
-                time.sleep(10)
-                continue
+                print("Got an error, retrying in 30")
             if args.v:
                 print(result)
             json_data = json.loads(result)
-            if len(json_data) == 1: # hacky fix for different return formats?
+
+            if len(json_data) == 1:  # hacky fix for different return formats?
                 json_data = json_data[0]
             status = json_data["jobStatus"]["status"]
             print("Job Status: ", status)
@@ -156,7 +156,6 @@ if __name__ == "__main__":
                 if status == "FINISHED_SUCCESS":
                     successful_jobs.append(job_id)
                 job_id = c.run_next_job()
-
 
         controls = [c for c in controls if c.get_job_id() is not None]
         time.sleep(30)  # wait a minute before checking again
