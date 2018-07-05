@@ -10,7 +10,7 @@ Before running, run 'ngc config set' and set the following:
 Debug Mode: False
 CLI output format type: json
 """
-job_names = "testparallel"
+job_names = "testvideo"
 frame_stop = 5001
 
 jobs = [
@@ -63,7 +63,8 @@ class JobControl:
         config = json.dumps(self.jobs[self.jobcounter])
         config = ''.join(config.split())  # remove spaces from config string
         config = '\\"'.join(config.split('"'))  # escape quotes
-        command = "echo '" + config + "' > config.json && opt/conda/envs/pytorch-py3.6/bin/python " \
+        command = "echo '" + config + "' > config.json && /usr/bin/xvfb-run -s '-screen 0 1400x900x24' " \
+                                      "opt/conda/envs/pytorch-py3.6/bin/python " \
                                       "/workspace/ptan/samples/dqn_speedup/05_new_wrappers.py " \
                                       "--cuda --fsa --telemetry --video --file config.json --stop " + str(frame_stop)
         runline = self.get_job(job_names + str(self.jobcounter), command)

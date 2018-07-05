@@ -11,10 +11,11 @@ from tensorboardX import SummaryWriter
 from lib import dqn_model, common, atari_wrappers
 import json
 import os
-
 import pickle
 
 from gym import wrappers
+
+import distutils.spawn, distutils.version
 
 PLAY_STEPS = 4
 
@@ -81,6 +82,13 @@ if __name__ == "__main__":
     parser.add_argument("--stop", default=0, type=int, help="Number of frames to force stop at")
 
     args = parser.parse_args()
+
+    if distutils.spawn.find_executable('avconv') is not None:
+        print("using avconv")
+    elif distutils.spawn.find_executable('ffmpeg') is not None:
+        print("using ffmpeg")
+    else:
+        print("has neither avconv nor ffmpeg")
 
     mp.set_start_method('spawn')
     if args.fsa:
