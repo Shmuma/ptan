@@ -10,8 +10,8 @@ Before running, run 'ngc config set' and set the following:
 Debug Mode: False
 CLI output format type: json
 """
-job_names = "testparallel"
-frame_stop = 10000000
+job_names = "test"
+frame_stop = 5000
 
 jobs = [
     {
@@ -19,7 +19,8 @@ jobs = [
       "epsilon_start": 1.0,
       "epsilon_final": 0.1,
       "learning_rate": 0.00005,
-      "gamma": 0.99
+      "gamma": 0.99,
+      "fsa": True
     },
     {
       "epsilon_frames": 10 ** 6 / 2,
@@ -29,11 +30,12 @@ jobs = [
       "gamma": 0.99,
     },
     {
-        "epsilon_frames": 10 ** 6 * 2,
-        "epsilon_start": 1.0,
-        "epsilon_final": 0.1,
-        "learning_rate": 0.00005,
-        "gamma": 0.99
+      "epsilon_frames": 10 ** 6 * 2,
+      "epsilon_start": 1.0,
+      "epsilon_final": 0.1,
+      "learning_rate": 0.00005,
+      "gamma": 0.99,
+      "fsa": True
     }
 
 ]  # list of dictionaries (json)
@@ -59,17 +61,20 @@ class JobControl:
         config = '\\"'.join(config.split('"'))  # escape quotes
         command = "echo '" + config + "' > config.json && opt/conda/envs/pytorch-py3.6/bin/python " \
                                       "/workspace/ptan/samples/dqn_speedup/05_new_wrappers.py " \
-                                      "--cuda --fsa --telemetry --file config.json --stop " + str(frame_stop)
+                                      "--cuda --telemetry --file config.json --stop " + str(frame_stop)
         runline = self.get_job(job_names + str(self.jobcounter), command)
         if self.verbose:
             print(' '.join(runline))
         result = subprocess.check_output(' '.join(runline), shell=True)
-        if b"Job created." in result:
-            result = result[13:]
-        self.jobcounter += 1
         if self.verbose:
             print(result)
-        data = json.loads(result)
+
+        if b"Job created." in result:
+            data = json.loads(result[13:])
+        else:
+            data = json.loads(result)[0]
+
+        self.jobcounter += 1
         job_id = data["id"]
         print("Job Id is ", job_id)
         return job_id
@@ -98,6 +103,8 @@ if __name__ == "__main__":
         if args.v:
             print(result)
         json_data = json.loads(result)
+        if len(json_data) == 1: # hacky fix for different return formats?
+            json_data = json_data[0]
         status = json_data["jobStatus"]["status"]
         print("Job Status: ", status)
 
