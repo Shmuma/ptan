@@ -63,7 +63,7 @@ class JobControl:
         config = json.dumps(self.jobs[self.jobcounter])
         config = ''.join(config.split())  # remove spaces from config string
         config = '\\"'.join(config.split('"'))  # escape quotes
-        command = "echo '" + config + "' > config.json && /usr/bin/xvfb-run -s '-screen 0 1400x900x24' " \
+        command = "echo '" + config + "' > config.json && " \
                                       "opt/conda/envs/pytorch-py3.6/bin/python " \
                                       "/workspace/ptan/samples/dqn_speedup/05_new_wrappers.py " \
                                       "--cuda --fsa --telemetry --video --file config.json --stop " + str(frame_stop)
