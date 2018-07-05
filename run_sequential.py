@@ -10,7 +10,7 @@ Before running, run 'ngc config set' and set the following:
 Debug Mode: False
 CLI output format type: json
 """
-job_names = "test"
+job_name_prefix = "test"
 frame_stop = 5000
 
 jobs = [
@@ -39,16 +39,27 @@ jobs = [
       "learning_rate": 0.00005,
       "gamma": 0.99,
       "fsa": True
+    },
+    {
+      "epsilon_frames": 10 ** 6 * 2,
+      "epsilon_start": 1.0,
+      "epsilon_final": 0.1,
+      "learning_rate": 0.00005,
+      "gamma": 0.99,
+      "fsa": True,
+      "machine": "ngcv4"
     }
 
 ]  # list of dictionaries (json)
 
 
 class JobControl:
-    def __init__(self, job_list, v):
+    def __init__(self, job_name, job_list, v):
         self.jobcounter = 0
         self.jobs = job_list
         self.verbose = v
+        self.job_id = None
+        self.job_name = job_name+'-'
 
     def get_job(self, name, command, machine="ngcv1"):
         name = '"'+name+'"'
@@ -58,6 +69,7 @@ class JobControl:
 
     def run_next_job(self):
         if self.jobcounter >= len(self.jobs):
+            self.job_id = None
             return None
         config = json.dumps(self.jobs[self.jobcounter])
         config = ''.join(config.split())  # remove spaces from config string
@@ -66,10 +78,10 @@ class JobControl:
                                       "/workspace/ptan/samples/dqn_speedup/05_new_wrappers.py " \
                                       "--cuda --telemetry --file config.json --stop " + str(frame_stop)
         if "machine" in self.jobs[self.jobcounter]:
-            runline = self.get_job(job_names + str(self.jobcounter), command,
+            runline = self.get_job(self.job_name + str(self.jobcounter), command,
                                    self.jobs[self.jobcounter]["machine"])
         else:
-            runline = self.get_job(job_names + str(self.jobcounter), command)
+            runline = self.get_job(self.job_name + str(self.jobcounter), command)
 
         if self.verbose:
             print(' '.join(runline))
@@ -84,46 +96,69 @@ class JobControl:
 
         self.jobcounter += 1
         job_id = data["id"]
+        self.job_id = job_id
         print("Job Id is ", job_id)
         return job_id
+
+    def get_job_id(self):
+        return self.job_id
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", default=False, action="store_true", help="Enable verbose output")
+    parser.add_argument("-p", default=False, action="store_true", help="Enable parallel")
 
     args = parser.parse_args()
 
-    control = JobControl(jobs, args.v)
+    if args.p:
+        job_lists = {}
+        for job in jobs:
+            if "machine" in job:
+                if job["machine"] not in job_lists:
+                    job_lists[job["machine"]] = []
+                job_lists[job["machine"]].append(job)
+            else:
+                if "none" not in job_lists:
+                    job_lists["none"] = []
+                job_lists["none"].append(job)
+        controls = []
+        for machine in job_lists:
+            controls.append(JobControl(job_name_prefix+'-'+machine, job_lists[machine], args.v))
+    else:
+        controls = [JobControl(job_name_prefix, jobs, args.v)]
 
-    # start the first job
-    job_id = control.run_next_job()
+    # start the first jobs
+    for c in controls:
+        c.run_next_job()
 
     successful_jobs = []
 
-    while True:
+    while len(controls) > 0:
         # check if running job has finished
-        try:
-            result = subprocess.check_output(['ngc', 'batch', 'get', str(job_id)])
-        except subprocess.CalledProcessError:
-            print("Got an error, retrying in 10")
-            time.sleep(10)
-            continue
-        if args.v:
-            print(result)
-        json_data = json.loads(result)
-        if len(json_data) == 1: # hacky fix for different return formats?
-            json_data = json_data[0]
-        status = json_data["jobStatus"]["status"]
-        print("Job Status: ", status)
+        for c in controls:
+            job_id = c.get_job_id()
+            try:
+                result = subprocess.check_output(['ngc', 'batch', 'get', str(job_id)])
+            except subprocess.CalledProcessError:
+                print("Got an error, retrying in 10")
+                time.sleep(10)
+                continue
+            if args.v:
+                print(result)
+            json_data = json.loads(result)
+            if len(json_data) == 1: # hacky fix for different return formats?
+                json_data = json_data[0]
+            status = json_data["jobStatus"]["status"]
+            print("Job Status: ", status)
 
-        if status == "FINISHED_SUCCESS" or status == "FAILED":
-            if status == "FINISHED_SUCCESS":
-                successful_jobs.append(job_id)
-            job_id = control.run_next_job()
-            if job_id == None:
-                break
+            if status == "FINISHED_SUCCESS" or status == "FAILED":
+                if status == "FINISHED_SUCCESS":
+                    successful_jobs.append(job_id)
+                job_id = c.run_next_job()
 
+
+        controls = [c for c in controls if c.get_job_id() is not None]
         time.sleep(30)  # wait a minute before checking again
 
     check_ip = subprocess.check_output(["ifconfig"])
