@@ -10,7 +10,9 @@ jobs = [
       "learning_rate": 0.00005,
       "gamma": 0.99,
       "fsa": True,
-      "machine": "ngcv8"
+      "machine": "ngcv8",
+      "replay_initial": 500,
+      "video_interval": 1000
     },
     {
       "epsilon_frames": 10 ** 6 / 2,
@@ -19,7 +21,9 @@ jobs = [
       "learning_rate": 0.00005,
       "gamma": 0.99,
       "fsa": True,
-      "machine": "ngcv4"
+      "machine": "ngcv4",
+      "replay_initial": 500,
+      "video_interval": 1000,
     },
     {
       "epsilon_frames": 10 ** 6 * 2,
@@ -28,18 +32,12 @@ jobs = [
       "learning_rate": 0.00005,
       "gamma": 0.99,
       "fsa": True,
-      "machine": "local"
-    },
-    {
-      "epsilon_frames": 10 ** 6 * 2,
-      "epsilon_start": 1.0,
-      "epsilon_final": 0.1,
-      "learning_rate": 0.00005,
-      "gamma": 0.99,
-      "fsa": True,
-      "machine": "ngcv4"
+      "machine": "local",
+      "replay_initial": 500,
+      "video_interval": 1000
     }
-]  # list of dictionaries (json)
+
+] # list of dictionaries (json)
 
 cloud = []
 local = []
