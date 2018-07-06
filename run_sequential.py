@@ -109,8 +109,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", default=False, action="store_true", help="Enable verbose output")
     parser.add_argument("-p", default=False, action="store_true", help="Enable parallel")
+    parser.add_argument("--file", default='', help="Input file")
 
     args = parser.parse_args()
+
+    if args.file:
+        with open(args.file, "r") as f:
+            jobs = json.loads(open(args.file, "r").read())
 
     if args.p:
         job_lists = {}

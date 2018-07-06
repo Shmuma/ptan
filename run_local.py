@@ -1,5 +1,6 @@
 import subprocess
 import json
+import argparse
 
 frame_stop = 5000
 
@@ -32,9 +33,19 @@ jobs = [
 
 
 if __name__ == "__main__":
-    f = open('job_number.txt', 'r')
-    job_number = int(f.read())
-    f.close()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--file", default='', help="Input file")
+
+    args = parser.parse_args()
+
+    if args.file:
+        with open(args.file, "r") as f:
+            jobs = json.loads(open(args.file, "r").read())
+
+
+    with open('job_number.txt', 'r') as f:
+        job_number = int(f.read())
+
     for job in jobs:
         # start the first job
         config = json.dumps(job)
