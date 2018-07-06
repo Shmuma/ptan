@@ -35,13 +35,12 @@ jobs = [
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--file", default='', help="Input file")
-
+    parser.add_argument("-v", default=False, action="store_true", help="Enable verbose output")
     args = parser.parse_args()
 
     if args.file:
         with open(args.file, "r") as f:
             jobs = json.loads(open(args.file, "r").read())
-
 
     with open('job_number.txt', 'r') as f:
         job_number = int(f.read())
@@ -52,7 +51,9 @@ if __name__ == "__main__":
         config = ''.join(config.split())  # remove spaces from config string
         command = "echo '" + config + "' > config.json && python samples/dqn_speedup/05_new_wrappers.py " \
                                       "--cuda --video --file config.json --stop " + str(frame_stop)
-        print(command)
+        print("Locally starting Job #", str(job_number))
+        if args.v:
+            print(command)
         result = subprocess.check_output(command, shell=True)
 
         try:
