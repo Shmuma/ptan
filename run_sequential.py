@@ -10,8 +10,9 @@ Before running, run 'ngc config set' and set the following:
 Debug Mode: False
 CLI output format type: json
 """
+
 job_name_prefix = "test"
-frame_stop = 5000
+frame_stop = 5001
 
 jobs = [
     {
@@ -21,7 +22,9 @@ jobs = [
       "learning_rate": 0.00005,
       "gamma": 0.99,
       "fsa": True,
-      "machine": "ngcv8"
+      "machine": "ngcv8",
+      "replay_initial": 500,
+      "video_interval": 1000
     },
     {
       "epsilon_frames": 10 ** 6 / 2,
@@ -30,15 +33,9 @@ jobs = [
       "learning_rate": 0.00005,
       "gamma": 0.99,
       "fsa": True,
-      "machine": "ngcv4"
-    },
-    {
-      "epsilon_frames": 10 ** 6 * 2,
-      "epsilon_start": 1.0,
-      "epsilon_final": 0.1,
-      "learning_rate": 0.00005,
-      "gamma": 0.99,
-      "fsa": True
+      "machine": "ngcv4",
+      "replay_initial": 500,
+      "video_interval": 1000,
     },
     {
       "epsilon_frames": 10 ** 6 * 2,
@@ -47,7 +44,9 @@ jobs = [
       "learning_rate": 0.00005,
       "gamma": 0.99,
       "fsa": True,
-      "machine": "ngcv4"
+      "machine": "ngcv4",
+      "replay_initial": 500,
+      "video_interval": 1000
     }
 
 ]  # list of dictionaries (json)
@@ -75,9 +74,10 @@ class JobControl:
         config = json.dumps(self.jobs[self.jobcounter])
         config = ''.join(config.split())  # remove spaces from config string
         config = '\\"'.join(config.split('"'))  # escape quotes
-        command = "echo '" + config + "' > config.json && opt/conda/envs/pytorch-py3.6/bin/python " \
+        command = "echo '" + config + "' > config.json && " \
+                                      "opt/conda/envs/pytorch-py3.6/bin/python " \
                                       "/workspace/ptan/samples/dqn_speedup/05_new_wrappers.py " \
-                                      "--cuda --telemetry --file config.json --stop " + str(frame_stop)
+                                      "--cuda --telemetry --video --file config.json --stop " + str(frame_stop)
 
         if "machine" in self.jobs[self.jobcounter]:
             runline = self.get_job(self.job_name + str(self.jobcounter), command,

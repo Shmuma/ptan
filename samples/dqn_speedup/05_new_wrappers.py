@@ -11,10 +11,11 @@ from tensorboardX import SummaryWriter
 from lib import dqn_model, common, atari_wrappers
 import json
 import os
-
 import pickle
 
 from gym import wrappers
+
+import distutils.spawn, distutils.version
 
 PLAY_STEPS = 4
 
@@ -127,6 +128,13 @@ if __name__ == "__main__":
         if not os.path.exists(video_path):
             os.makedirs(video_path)
 
+    if distutils.spawn.find_executable('avconv') is not None:
+        print('using avconv')
+    elif distutils.spawn.find_executable('ffmpeg') is not None:
+        print('using ffmpeg')
+    else:
+        print('has neither avconv nor ffmpeg')
+
     env = make_env(params)
 
     if args.fsa:
@@ -206,25 +214,33 @@ if __name__ == "__main__":
         loss_v.backward()
         optimizer.step()
 
-        if frame_idx > counter*1000000 and args.video:
+        if frame_idx > counter*params['video_interval'] and args.video:
+            print('about to make test env')
             test_env = wrappers.Monitor(make_env(params),
                                         "{}/frame{}".format(video_path, counter),
                                         video_callable=lambda ep_id: True if ep_id < 3 else False,
                                         force=True)
+            print('made test env')
             obs = test_env.reset()
             test_agent = ptan.agent.PolicyAgent(net, action_selector=ptan.actions.ArgmaxActionSelector(),
                                                 device=device, fsa=args.fsa)
             real_done = False
             while not real_done:
+                print('start of while loop')
                 if args.plot:
                     test_env.render()
                 actions, agent_states = test_agent([obs])
+                print('about to step')
                 obs, reward, done, info = test_env.step(actions[0])
+                print('stepped')
                 real_done = test_env.env.env.env.env.env.env.was_real_done
                 if real_done:
                     print(test_env.env.env.env.env.env.env.score)
                 if done:
                     obs = test_env.reset()
+
+            model_video_path = "{}/frame{}/model.pth".format(video_path, counter)
+            torch.save(net.state_dict(), model_video_path)
             test_env.close()
             counter += 1
 

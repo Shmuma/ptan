@@ -90,7 +90,7 @@ HYPERPARAMS = {
     },
     'fsa-invaders': {
         'env_name': "fsa-SpaceInvadersNoFrameskip-v4",
-        'stop_reward': 500.0,
+        'stop_reward': 50.0,
         'run_name': 'fsa-invaders',
         'replay_size': 10 ** 6,
         'replay_initial': 50000,
@@ -101,7 +101,8 @@ HYPERPARAMS = {
         # 'learning_rate': 0.00025,
         'learning_rate': 0.00005,
         'gamma': 0.99,
-        'batch_size': 32
+        'batch_size': 32,
+        'video_interval': 1000000
     },
     'mr': {
         'env_name': "MontezumaRevengeNoFrameskip-v4",
@@ -316,7 +317,7 @@ class RewardTracker:
             self.tm.metric_push_async({'metric': 'max score', 'value': max_score})
 
         with open(self.outfile, "a") as f:
-            f.write("%d: done %d games, mean reward %.3f, mean score %.3f, max score %.3f \n" % (
+            f.write("frames %d, games %d, mean reward %.3f, mean score %.3f, max score %.3f \n" % (
             frame, len(self.total_rewards), mean_reward, mean_score, max_score
             ))
 
