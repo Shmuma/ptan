@@ -12,6 +12,7 @@ if os.environ.get('DISPLAY','') == '':
 
 import matplotlib.pylab as plt
 import itertools
+import csv
 try:
     import telemetry
 except:
@@ -262,6 +263,12 @@ class RewardTracker:
                 os.makedirs(results)
             self.outfile = os.path.join(results, 'output.txt')
 
+        self.fieldnames = ['frames', 'games', 'mean reward', 'mean score', 'max score']
+        with open(self.outfile, 'w', newline='') as csvfile:
+
+            csv_writer = csv.DictWriter(csvfile, fieldnames=self.fieldnames)
+            csv_writer.writeheader()
+
     def __enter__(self):
         self.ts = time.time()
         self.ts_frame = 0
@@ -316,10 +323,14 @@ class RewardTracker:
             self.tm.metric_push_async({'metric': 'mean score', 'value': mean_score})
             self.tm.metric_push_async({'metric': 'max score', 'value': max_score})
 
-        with open(self.outfile, "a") as f:
-            f.write("frames %d, games %d, mean reward %.3f, mean score %.3f, max score %.3f \n" % (
-            frame, len(self.total_rewards), mean_reward, mean_score, max_score
-            ))
+        with open(self.outfile, "a") as csvfile:
+            csv_writer = csv.DictWriter(csvfile, fieldnames=self.fieldnames)
+            csv_writer.writerow({'frames': frame, 'games': len(self.total_rewards),
+                                 'mean reward': mean_reward, 'mean score': mean_score,
+                                 'max score': max_score})
+            # f.write("frames %d, games %d, mean reward %.3f, mean score %.3f, max score %.3f \n" % (
+            # frame, len(self.total_rewards), mean_reward, mean_score, max_score
+            # ))
 
         if mean_reward > self.stop_reward:
             print("Solved in %d frames!" % frame)
