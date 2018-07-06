@@ -9,7 +9,7 @@ def get_jobs(job_list):
         os.makedirs(results_path)
     for job_id in job_list:
         output = subprocess.check_output(['ngc', 'result', 'download', '-d', results_path, str(job_id)])
-        if b'Download completed' in output or 'Completed' in output:
+        if b'Download completed' in output or b'Completed' in output:
             print("Successfully downloaded data for job {}".format(job_id))
         else:
             print("DATA NOT SUCCESSFULLY DOWNLOADED FOR JOB {}".format(job_id))
