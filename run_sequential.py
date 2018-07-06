@@ -94,7 +94,9 @@ class JobControl:
         if b"Job created." in result:
             data = json.loads(result[13:])
         else:
-            data = json.loads(result)[0]
+            data = json.loads(result)
+            if len(data) == 1:
+                data = data[0]
 
         self.jobcounter += 1
         self.job_id = data["id"]
