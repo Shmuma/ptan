@@ -63,7 +63,7 @@ class JobControl:
     def get_job(self, name, command, machine="ngcv1"):
         name = '"'+name+'"'
         command = '"' + command + '"'
-        return ['ngc batch run', '--name', name, '--image', '"lucasl_drl_00/fsa-atari:0.1.1"', '--ace', 'nv-us-west-2',
+        return ['ngc batch run', '--name', name, '--image', '"lucasl_drl_00/fsa-atari:0.1"', '--ace', 'nv-us-west-2',
                 '--instance', machine , '--commandline', command,  '--result', '/results']
 
     def run_next_job(self):
