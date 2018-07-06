@@ -84,6 +84,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     mp.set_start_method('spawn')
+
+    if args.file:
+        config_file = json.loads(open(args.file, "r").read())
+        if 'dqn_model' in config_file:
+            model = config_file['dqn_model']
+        if 'fsa' in config_file:
+            args.fsa = config_file['fsa']
+
     if args.fsa:
         params = common.HYPERPARAMS['fsa-invaders']
     else:
@@ -96,12 +104,9 @@ if __name__ == "__main__":
     model = None
 
     if args.file:
-        config_file = json.loads(open(args.file, "r").read())
         for option in params:
             if option in config_file:
                 params[option] = config_file[option]
-        if 'dqn_model' in config_file:
-            model = config_file['dqn_model']
 
     device = torch.device("cuda" if args.cuda else "cpu")
 

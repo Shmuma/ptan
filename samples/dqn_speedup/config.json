@@ -4,5 +4,7 @@
   "epsilon_final": 0.2,
   "learning_rate": 0.00006,
   "gamma": 0.98,
-  "dqn_model": "FSADQNAppendToFC"
+  "dqn_model": "FSADQNAppendToFC",
+  "fsa": true,
+  "machine": "ngcv2"
 }
