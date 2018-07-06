@@ -113,8 +113,10 @@ if __name__ == "__main__":
     curdir = os.path.abspath(__file__)
     if args.telemetry:
         model_path = 'results/model'
+        params_path = 'results'
     else:
         model_path = os.path.abspath(os.path.join(curdir, '../../../results/model'))
+        params_path = os.path.abspath(os.path.join(curdir, '../../../results'))
 
     if not os.path.exists(model_path):
         os.makedirs(model_path)
@@ -127,6 +129,10 @@ if __name__ == "__main__":
 
         if not os.path.exists(video_path):
             os.makedirs(video_path)
+
+    with open(params_path + "/params.txt", "w+") as f:
+        for param, value in params.items():
+            f.write(param + ": " + str(value) + "\n")
 
     if distutils.spawn.find_executable('avconv') is not None:
         print('using avconv')
