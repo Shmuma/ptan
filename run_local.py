@@ -1,6 +1,7 @@
 import subprocess
 import json
 import argparse
+import os
 
 frame_stop = 5000
 
@@ -42,19 +43,34 @@ if __name__ == "__main__":
         with open(args.file, "r") as f:
             jobs = json.loads(open(args.file, "r").read())
 
-    with open('job_number.txt', 'r') as f:
-        job_number = int(f.read())
+    curdir = os.path.abspath(__file__)
+    exec_path = os.path.abspath(os.path.join(curdir, '../samples/dqn_speedup/05_new_wrappers.py'))
+    json_path = os.path.abspath(os.path.join(curdir, '../config.json'))
+
+    try:
+        with open('job_number.txt', 'r') as f:
+            job_number = int(f.read())
+    except:
+        with open('job_number.txt', 'w+') as f:
+            f.write(str('0'))
+            job_number = 0
 
     for job in jobs:
         # start the first job
         config = json.dumps(job)
         config = ''.join(config.split())  # remove spaces from config string
-        command = "echo '" + config + "' > config.json && python samples/dqn_speedup/05_new_wrappers.py " \
-                                      "--cuda --video --file config.json --stop " + str(frame_stop)
+        echo_command = "echo '" + config + "' > " + json_path
+        subprocess.call(echo_command, shell=True)
+
+        if 'brandon' in curdir:
+            python = "/home/brandon/packages/anaconda2/envs/fsaatari/bin/python3.6"
+        else:
+            python = "python"
+        command = [python, exec_path, "--cuda", "--video", "--file", "config.json", "--stop", str(frame_stop)]
         print("Starting local Job #", str(job_number))
         if args.v:
             print(command)
-        result = subprocess.check_output(command, shell=True)
+        result = subprocess.check_output(command)
 
         print("Finished local Job #", str(job_number))
 
