@@ -1,6 +1,7 @@
 import subprocess
 import json
 import argparse
+
 jobs = [
     {
       "epsilon_frames": 10 ** 6,
@@ -38,7 +39,6 @@ jobs = [
       "fsa": True,
       "machine": "ngcv4"
     }
-
 ]  # list of dictionaries (json)
 
 cloud = []

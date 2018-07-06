@@ -51,10 +51,12 @@ if __name__ == "__main__":
         config = ''.join(config.split())  # remove spaces from config string
         command = "echo '" + config + "' > config.json && python samples/dqn_speedup/05_new_wrappers.py " \
                                       "--cuda --video --file config.json --stop " + str(frame_stop)
-        print("Locally starting Job #", str(job_number))
+        print("Starting local Job #", str(job_number))
         if args.v:
             print(command)
         result = subprocess.check_output(command, shell=True)
+
+        print("Finished local Job #", str(job_number))
 
         try:
             result = subprocess.check_output("mkdir results/" + str(job_number), shell=True)

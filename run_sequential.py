@@ -100,7 +100,7 @@ class JobControl:
 
         self.jobcounter += 1
         self.job_id = data["id"]
-        print("Job Id is ", self.job_id)
+        print(self.job_name + str(self.jobcounter), "Job Id is ", self.job_id)
         return self.job_id
 
     def get_job_id(self):
@@ -157,7 +157,7 @@ if __name__ == "__main__":
             if len(json_data) == 1:  # hacky fix for different return formats?
                 json_data = json_data[0]
             status = json_data["jobStatus"]["status"]
-            print("Job Status: ", status)
+            print("Job #" + str(job_id) + " Status: ", status)
 
             if status == "FINISHED_SUCCESS" or status == "FAILED":
                 if status == "FINISHED_SUCCESS":
