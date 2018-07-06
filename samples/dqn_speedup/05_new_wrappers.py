@@ -79,7 +79,6 @@ if __name__ == "__main__":
     parser.add_argument("--video", default=False, action="store_true", help="Record video")
     parser.add_argument("--telemetry", default=False, action="store_true", help="Use telemetry")
     parser.add_argument("--file", default='', help="Config file")
-    parser.add_argument("--stop", default=0, type=int, help="Number of frames to force stop at")
 
     args = parser.parse_args()
 
@@ -197,7 +196,7 @@ if __name__ == "__main__":
 
     counter = 0
     while play_proc.is_alive():
-        if args.stop and frame_idx > args.stop:
+        if frame_idx > params["frame_stop"]:
             play_proc.terminate()
             break
         # build up experience replay buffer?

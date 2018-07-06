@@ -103,7 +103,8 @@ HYPERPARAMS = {
         'learning_rate': 0.00005,
         'gamma': 0.99,
         'batch_size': 32,
-        'video_interval': 1000000
+        'video_interval': 1000000,
+        'frame_stop': 3000001
     },
     'mr': {
         'env_name': "MontezumaRevengeNoFrameskip-v4",

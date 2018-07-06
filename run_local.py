@@ -3,8 +3,6 @@ import json
 import argparse
 import os
 
-frame_stop = 5000
-
 jobs = [
     {
         "epsilon_frames": 10 ** 6,
@@ -12,14 +10,16 @@ jobs = [
         "epsilon_final": 0.1,
         "learning_rate": 0.00005,
         "gamma": 0.99,
-        "fsa": True
+        "fsa": True,
+        "frame_stop": 3000
     },
     {
         "epsilon_frames": 10 ** 6 / 2,
         "epsilon_start": 1.0,
         "epsilon_final": 0.1,
         "learning_rate": 0.00005,
-        "gamma": 0.99
+        "gamma": 0.99,
+        "frame_stop": 3000
     },
     {
         "epsilon_frames": 10 ** 6 * 2,
@@ -27,7 +27,8 @@ jobs = [
         "epsilon_final": 0.1,
         "learning_rate": 0.00005,
         "gamma": 0.99,
-        "fsa": True
+        "fsa": True,
+        "frame_stop": 3000
     }
 
 ]  # list of dictionaries (json)
@@ -66,7 +67,7 @@ if __name__ == "__main__":
             python = "/home/brandon/packages/anaconda2/envs/fsaatari/bin/python3.6"
         else:
             python = "python"
-        command = [python, exec_path, "--cuda", "--video", "--file", "config.json", "--stop", str(frame_stop)]
+        command = [python, exec_path, "--cuda", "--video", "--file", "config.json"]
         print("Starting local Job #", str(job_number))
         if args.v:
             print(command)

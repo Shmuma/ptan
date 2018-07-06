@@ -12,7 +12,8 @@ jobs = [
       "fsa": True,
       "machine": "ngcv8",
       "replay_initial": 500,
-      "video_interval": 1000
+      "video_interval": 1000,
+      "frame_stop": 3000
     },
     {
       "epsilon_frames": 10 ** 6 / 2,
@@ -24,6 +25,7 @@ jobs = [
       "machine": "ngcv4",
       "replay_initial": 500,
       "video_interval": 1000,
+      "frame_stop": 3000
     },
     {
       "epsilon_frames": 10 ** 6 * 2,
@@ -34,7 +36,8 @@ jobs = [
       "fsa": True,
       "machine": "local",
       "replay_initial": 500,
-      "video_interval": 1000
+      "video_interval": 1000,
+      "frame_stop": 3000
     }
 
 ] # list of dictionaries (json)

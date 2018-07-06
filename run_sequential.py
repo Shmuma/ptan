@@ -11,8 +11,7 @@ Debug Mode: False
 CLI output format type: json
 """
 
-job_name_prefix = "test"
-frame_stop = 5001
+job_name_prefix = "testparallel"
 
 jobs = [
     {
@@ -24,7 +23,8 @@ jobs = [
       "fsa": True,
       "machine": "ngcv8",
       "replay_initial": 500,
-      "video_interval": 1000
+      "video_interval": 1000,
+      "frame_stop": 3000
     },
     {
       "epsilon_frames": 10 ** 6 / 2,
@@ -36,6 +36,7 @@ jobs = [
       "machine": "ngcv4",
       "replay_initial": 500,
       "video_interval": 1000,
+      "frame_stop": 3000
     },
     {
       "epsilon_frames": 10 ** 6 * 2,
@@ -46,7 +47,8 @@ jobs = [
       "fsa": True,
       "machine": "ngcv4",
       "replay_initial": 500,
-      "video_interval": 1000
+      "video_interval": 1000,
+      "frame_stop": 3000
     }
 
 ]  # list of dictionaries (json)
@@ -77,7 +79,7 @@ class JobControl:
         command = "echo '" + config + "' > config.json && " \
                                       "opt/conda/envs/pytorch-py3.6/bin/python " \
                                       "/workspace/ptan/samples/dqn_speedup/05_new_wrappers.py " \
-                                      "--cuda --telemetry --video --file config.json --stop " + str(frame_stop)
+                                      "--cuda --telemetry --video --file config.json"
 
         if "machine" in self.jobs[self.jobcounter]:
             runline = self.get_job(self.job_name + str(self.jobcounter), command,
