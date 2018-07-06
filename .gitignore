@@ -9,3 +9,7 @@ build
 .swp
 runs
 results
+config.json
+cloud.json
+local.json
+job_number.txt
