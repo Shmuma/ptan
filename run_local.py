@@ -84,6 +84,10 @@ if __name__ == "__main__":
         except subprocess.CalledProcessError:
             pass
         try:
+            result = subprocess.check_output("mv results/params.txt results/" + str(job_number), shell=True)
+        except subprocess.CalledProcessError:
+            pass
+        try:
             result = subprocess.check_output("mv results/model results/" + str(job_number), shell=True)
         except subprocess.CalledProcessError:
             pass

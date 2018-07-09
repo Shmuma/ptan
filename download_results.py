@@ -16,5 +16,5 @@ def get_jobs(job_list):
 
 
 if __name__ == "__main__":
-    job_list = [77669, 77671]
+    job_list = [79274, 79275, 79319, 79320]
     get_jobs(job_list)
