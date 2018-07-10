@@ -11,7 +11,7 @@ Debug Mode: False
 CLI output format type: json
 """
 
-job_name_prefix = "testparallel"
+job_name_prefix = "test"
 
 jobs = [
     {
@@ -21,7 +21,7 @@ jobs = [
       "learning_rate": 0.00005,
       "gamma": 0.99,
       "fsa": True,
-      "machine": "ngcv8",
+      "machine": "ngcv1",
       "replay_initial": 500,
       "video_interval": 1000,
       "frame_stop": 3000
@@ -33,7 +33,7 @@ jobs = [
       "learning_rate": 0.00005,
       "gamma": 0.99,
       "fsa": True,
-      "machine": "ngcv4",
+      "machine": "ngcv2",
       "replay_initial": 500,
       "video_interval": 1000,
       "frame_stop": 3000
@@ -45,7 +45,7 @@ jobs = [
       "learning_rate": 0.00005,
       "gamma": 0.99,
       "fsa": True,
-      "machine": "ngcv4",
+      "machine": "ngcv2",
       "replay_initial": 500,
       "video_interval": 1000,
       "frame_stop": 3000
@@ -59,10 +59,10 @@ class JobControl:
         self.jobcounter = 0
         self.jobs = job_list
         self.verbose = v
-        self.job_id = None
         self.job_name = job_name+'-'
+        self.job_list = []
 
-    def get_job(self, name, command, machine="ngcv1"):
+    def get_job(self, name, command, machine="ngcv8"):
         name = '"'+name+'"'
         command = '"' + command + '"'
         return ['ngc batch run', '--name', name, '--image', '"lucasl_drl_00/fsa-atari:0.1"', '--ace', 'nv-us-west-2',
@@ -70,8 +70,8 @@ class JobControl:
 
     def run_next_job(self):
         if self.jobcounter >= len(self.jobs):  # end of job list
-            self.job_id = None
             return None
+        print("Running " + self.job_name + str(self.jobcounter))
 
         config = json.dumps(self.jobs[self.jobcounter])
         config = ''.join(config.split())  # remove spaces from config string
@@ -100,13 +100,25 @@ class JobControl:
             if len(data) == 1:
                 data = data[0]
 
+        self.job_list.append(data["id"])
+        print(self.job_name + str(self.jobcounter), "Job Id is ", data["id"])
         self.jobcounter += 1
-        self.job_id = data["id"]
-        print(self.job_name + str(self.jobcounter), "Job Id is ", self.job_id)
-        return self.job_id
+        return data["id"]
 
-    def get_job_id(self):
-        return self.job_id
+    def run_all_jobs(self):
+        while self.jobcounter < len(self.jobs):
+            self.run_next_job()
+        self.job_list.reverse()
+
+    def get_last_job(self):
+        if len(self.job_list) == 0:
+            return None
+        return self.job_list[-1]
+
+    def pop_job(self):
+        if len(self.job_list) == 0:
+            return None
+        return self.job_list.pop()
 
 
 if __name__ == "__main__":
@@ -140,14 +152,14 @@ if __name__ == "__main__":
 
     # start the first jobs
     for c in controls:
-        c.run_next_job()
+        c.run_all_jobs()
 
     successful_jobs = []
 
     while len(controls) > 0:
         # check if running job has finished
         for c in controls:
-            job_id = c.get_job_id()
+            job_id = c.get_last_job()
             try:
                 result = subprocess.check_output(['ngc', 'batch', 'get', str(job_id)])
             except subprocess.CalledProcessError:
@@ -161,12 +173,12 @@ if __name__ == "__main__":
             status = json_data["jobStatus"]["status"]
             print("Job #" + str(job_id) + " Status: ", status)
 
-            if status == "FINISHED_SUCCESS" or status == "FAILED":
+            if status == "FINISHED_SUCCESS" or status == "FAILED" or status == "KILLED_BY_USER":
                 if status == "FINISHED_SUCCESS":
                     successful_jobs.append(job_id)
-                job_id = c.run_next_job()
+                c.pop_job()
 
-        controls = [c for c in controls if c.get_job_id() is not None]
+        controls = [c for c in controls if c.get_last_job() is not None]
         time.sleep(30)  # wait a minute before checking again
 
     check_ip = subprocess.check_output(["ifconfig"])
