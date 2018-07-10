@@ -12,6 +12,7 @@ from lib import dqn_model, common, atari_wrappers
 import json
 import os
 import pickle
+import numpy as np
 
 from gym import wrappers
 
@@ -174,8 +175,13 @@ if __name__ == "__main__":
 
     tgt_net = ptan.agent.TargetNet(net)
 
+    tm_net = dqn_model.TMPredict(env.observation_space.spaces['image'].shape,
+                                       env.observation_space.spaces['logic'].nvec,
+                                       env.action_space.n).to(device)
+
     buffer = ptan.experience.ExperienceReplayBuffer(experience_source=None, buffer_size=params['replay_size'])
     optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
+    optimizer_tm = optim.Adam(tm_net.parameters(), lr=params['learning_rate'])
     # optimizer = optim.RMSprop(net.parameters(), lr=params['learning_rate'], momentum=0.95, eps=0.01)
 
     exp_queue = mp.Queue(maxsize=PLAY_STEPS * 2)
@@ -214,30 +220,28 @@ if __name__ == "__main__":
         # train on ERB?
         optimizer.zero_grad()
         batch = buffer.sample(params['batch_size'])
-        loss_v = common.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=params['gamma'],
-                                      cuda=args.cuda, cuda_async=True, fsa=args.fsa)
+        loss_v, tm_loss = common.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=params['gamma'],
+                                      cuda=args.cuda, cuda_async=True, fsa=args.fsa, tm_net=tm_net)
         loss_v.backward()
         optimizer.step()
 
+        tm_loss.backward()
+        optimizer_tm.step()
+
         if frame_idx > counter*params['video_interval'] and args.video:
-            print('about to make test env')
             test_env = wrappers.Monitor(make_env(params),
                                         "{}/frame{}".format(video_path, counter),
                                         video_callable=lambda ep_id: True if ep_id < 3 else False,
                                         force=True)
-            print('made test env')
             obs = test_env.reset()
             test_agent = ptan.agent.PolicyAgent(net, action_selector=ptan.actions.ArgmaxActionSelector(),
                                                 device=device, fsa=args.fsa)
             real_done = False
             while not real_done:
-                print('start of while loop')
                 if args.plot:
                     test_env.render()
                 actions, agent_states = test_agent([obs])
-                print('about to step')
                 obs, reward, done, info = test_env.step(actions[0])
-                print('stepped')
                 real_done = test_env.env.env.env.env.env.env.was_real_done
                 if real_done:
                     print(test_env.env.env.env.env.env.env.score)
@@ -258,11 +262,23 @@ if __name__ == "__main__":
     eval_agent = ptan.agent.PolicyAgent(net, action_selector=ptan.actions.ArgmaxActionSelector(),
                                         device=device, fsa=args.fsa)
     score = 0
+    correct_logic = 0
+    total_logic = 0
     for i in range(eval_runs):
+        next_logic_state = None
         real_done = False
         while not real_done:
             actions, agent_states = eval_agent([obs])
             obs, reward, done, info = eval_env.step(actions[0])
+            if next_logic_state:
+                if np.array_equal(np.array(next_logic_state), obs['logic'].reshape(-1)):
+                    correct_logic += 1
+                total_logic += 1
+            next_logic_state = [int(torch.argmax(x).cpu()) for x in
+                                    tm_net({'image': torch.from_numpy(obs['image']).cuda()[None, :],
+                                            'logic': torch.from_numpy(obs['logic']).cuda()[None, :]},
+                                           torch.from_numpy(actions).cuda())]
+
             real_done = eval_env.env.env.env.env.env.was_real_done
             if real_done:
                 score += eval_env.env.env.env.env.env.score
@@ -271,12 +287,14 @@ if __name__ == "__main__":
                 obs = eval_env.reset()
     eval_env.close()
     score /= eval_runs
+    logic_acc = correct_logic/total_logic
+    print("TM acc: {}".format(logic_acc))
 
     model_file = "/model.pth"
     torch.save(net.state_dict(), model_path + model_file)
 
     data_file = "/data.pkl"
-    save_data = [score, model_name, params, args]
+    save_data = [score, logic_acc, model_name, params, args]
 
     with open(model_path + data_file, 'wb') as output:
         pickle.dump(save_data, output, pickle.HIGHEST_PROTOCOL)
