@@ -1,0 +1,1 @@
+from gym_fsa_atari.envs.fsa_atari_env import FsaAtariEnv
