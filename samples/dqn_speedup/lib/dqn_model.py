@@ -2,11 +2,41 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import itertools
+from functools import reduce
 
 import numpy as np
 
 def constant_init_to_1(tensor):
     return nn.init.constant_(tensor, 1.0)
+
+
+def make_one_hot_logic(labels, fsa_nvec):
+    # apply make_one_hot to every (logic_state, logic_dim) pair
+    map_one_hot = map(lambda x, y: make_one_hot(x[None, :].t().type(torch.cuda.LongTensor), y), labels.t(), fsa_nvec)
+    # append the dimensions together
+    one_hot_logic = torch.cat(tuple(map_one_hot), 1)
+    return one_hot_logic
+
+def make_one_hot(labels, C=2):
+    '''
+    Converts an integer label torch.autograd.Variable to a one-hot Variable.
+
+    Parameters
+    ----------
+    labels : torch.cuda.LongTensor
+        N x 1 x F, where N is batch size.
+        Each value is an integer representing correct classification.
+    C : integer.
+        number of classes in labels.
+
+    Returns
+    -------
+    target : torch.cuda.FloatTensor
+        N x C x F, where C is class number. One-hot encoded.
+    '''
+    one_hot = torch.cuda.FloatTensor(labels.size(0), C).zero_()
+    target = one_hot.scatter_(1, labels.data, 1)
+    return target
 
 class DQN(nn.Module):
     def __init__(self, input_shape, n_actions):
@@ -67,6 +97,62 @@ class FSADQN(nn.Module):
         fx = x.float() / 256
         conv_out = self.conv(fx).view(fx.size()[0], -1)
         return self.fc(conv_out)
+
+class TMPredict(nn.Module):
+    def __init__(self, input_shape, fsa_nvec, n_actions):
+        super(TMPredict, self).__init__()
+
+        self.fsa_nvec = torch.tensor(fsa_nvec).float().cuda()
+        self.n_actions = n_actions
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU()
+        )
+
+        conv_out_size = self._get_conv_out(input_shape)
+        self.conv_output = 32
+        self.conv_fc = nn.Sequential(
+            nn.Linear(conv_out_size, 512),
+            nn.ReLU(),
+            nn.Linear(512, self.conv_output)
+        )
+
+        self.out_fc = nn.Sequential(
+            nn.Linear(self.conv_output + n_actions + int(fsa_nvec.sum()), 512),
+            nn.ReLU(),
+            nn.Linear(512, int(fsa_nvec.sum()))
+        )
+
+    def _get_conv_out(self, shape):
+        o = self.conv(torch.zeros(1, *shape))
+        return int(np.prod(o.size()))
+
+    def forward(self, x, a):
+        image = x['image']
+        fx = image.float() / 256
+        conv_out = self.conv(fx).view(fx.size()[0], -1)
+        image_vec = self.conv_fc(conv_out)
+
+        logic = x['logic'].view(fx.size()[0], -1).float()
+        oh_logic = make_one_hot_logic(logic, self.fsa_nvec)
+        oh_action = make_one_hot(a[None, :].t(), self.n_actions)
+
+        cat_vec = torch.cat((image_vec, oh_logic, oh_action), 1)
+        fc_out = self.out_fc(cat_vec)
+
+        output_by_logic_dim = []
+        start = 0
+        for i in self.fsa_nvec.cpu().numpy().astype(int).tolist():
+            logic_out = fc_out[:, start:start+i]
+            start += i
+            output_by_logic_dim.append(logic_out)
+
+        return output_by_logic_dim
 
 # estimate q values using image and fsa state in parallel
 # and then add them up in the end
