@@ -5,7 +5,6 @@ __pycache__
 *.pyc
 res*
 dist/
-build/
 .swp
 results/
 runs/
