@@ -53,6 +53,6 @@ def visualize_data(job_list):
 
 
 if __name__ == "__main__":
-    job_list = [80452, 80453, 80454, 80455, 80456, 80457, 80458]
+    job_list = [80380, 80381, 80453, 80454]
     # job_list = [80379, 80380, 80381, 80382]
     visualize_data(job_list)
