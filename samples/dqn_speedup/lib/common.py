@@ -10,6 +10,7 @@ if os.environ.get('DISPLAY','') == '':
     print('no display found. Using non-interactive Agg backend')
     mpl.use('Agg')
 
+from functools import reduce
 import matplotlib.pylab as plt
 import itertools
 import csv
@@ -104,7 +105,7 @@ HYPERPARAMS = {
         'gamma': 0.99,
         'batch_size': 32,
         'video_interval': 1000000,
-        'frame_stop': 3000001
+        'frame_stop': 1000001
     },
     'mr': {
         'env_name': "MontezumaRevengeNoFrameskip-v4",
@@ -173,9 +174,7 @@ def unpack_batch(batch, fsa=False):
                np.array(dones, dtype=np.uint8), np.array(last_states, copy=False)
 
 
-def calc_loss_dqn(batch, net, tgt_net, gamma, cuda=False, cuda_async=False, fsa=False):
-
-
+def calc_loss_dqn(batch, net, tgt_net, gamma, cuda=False, cuda_async=False, fsa=False, tm_net=None):
     if fsa:
         states, logics, actions, rewards, dones, next_states, next_logics = unpack_batch(batch, fsa)
         states_v = torch.tensor(states)
@@ -211,11 +210,18 @@ def calc_loss_dqn(batch, net, tgt_net, gamma, cuda=False, cuda_async=False, fsa=
 
         expected_state_action_values = next_state_values.detach() * gamma + rewards_v
         if net.__class__.__name__ == 'FSADQNATTNMatching' or net.__class__.__name__ == 'FSADQNATTNMatchingFC':
-            return nn.MSELoss()(state_action_values, expected_state_action_values) + nn.MSELoss()(rr, cc.data)
+            dqn_loss = nn.MSELoss()(state_action_values, expected_state_action_values) + nn.MSELoss()(rr, cc.data)
         elif net.__class__.__name__ == 'FSADQNAppendToFCL1Conv':
-            return nn.MSELoss()(state_action_values, expected_state_action_values) + 0.01*conv_out.norm(1)
+            dqn_loss = nn.MSELoss()(state_action_values, expected_state_action_values) + 0.01*conv_out.norm(1)
         else:
-            return nn.MSELoss()(state_action_values, expected_state_action_values)
+            dqn_loss = nn.MSELoss()(state_action_values, expected_state_action_values)
+
+        if tm_net:
+            predicted_logic = tm_net({'image': states_v, 'logic': logics_v}, actions_v)
+            flat_next_logic = next_logics_v.view(next_logics_v.shape[0], -1).t()
+            tm_loss = reduce(lambda x,y: x+y, map(lambda input, target: nn.CrossEntropyLoss()(input, target), predicted_logic, flat_next_logic))
+
+        return dqn_loss, tm_loss
 
     else:
         states, actions, rewards, dones, next_states = unpack_batch(batch, fsa)
@@ -254,9 +260,9 @@ class RewardTracker:
         if telem:
             self.tm = telemetry.ApplicationTelemetry()
         if telem:
-            if not os.path.exists('results'):
-                os.makedirs('results')
-            self.outfile = 'results/output.txt'
+            if not os.path.exists('/results'):
+                os.makedirs('/results')
+            self.outfile = '/results/output.txt'
         else:
             curdir = os.path.abspath(__file__)
             results = os.path.abspath(os.path.join(curdir, '../../../../results'))
