@@ -156,9 +156,9 @@ class TMPredict(nn.Module):
 
 # estimate q values using image and fsa state in parallel
 # and then add them up in the end
-class FSADQNParallel(nn.Module):
+class FSADQNBias(nn.Module):
     def __init__(self, input_shape, fsa_nvec, n_actions):
-        super(FSADQNParallel, self).__init__()
+        super(FSADQNBias, self).__init__()
 
         self.fsa_nvec = torch.tensor(fsa_nvec).float().cuda()
 

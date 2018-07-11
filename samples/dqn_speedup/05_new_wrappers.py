@@ -144,10 +144,10 @@ if __name__ == "__main__":
     env = make_env(params)
 
     if args.fsa:
-        net = dqn_model.FSADQNAffine(env.observation_space.spaces['image'].shape,
+        net = dqn_model.FSADQNBias(env.observation_space.spaces['image'].shape,
                                            env.observation_space.spaces['logic'].nvec,
                                            env.action_space.n).to(device)
-        model_name = 'FSADQNAffine'
+        model_name = 'FSADQNBias'
         # net = dqn_model.FSADQNConvOneLogic(env.observation_space.spaces['image'].shape,
         #                        env.observation_space.spaces['logic'].nvec, env.action_space.n).to(device)
     else:
@@ -156,7 +156,7 @@ if __name__ == "__main__":
 
     dqn_models = {
         'FSADQN': dqn_model.FSADQN,
-        'FSADQNParallel': dqn_model.FSADQNParallel,
+        'FSADQNBias': dqn_model.FSADQNBias,
         'FSADQNScaling': dqn_model.FSADQNScaling,
         'FSADQNAffine': dqn_model.FSADQNAffine,
         'FSADQNIndexOutput' : dqn_model.FSADQNIndexOutput,
