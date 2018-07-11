@@ -1,14 +1,25 @@
-atari-py==0.0.21
+cython
+h5py
+matplotlib
+lmdb
+imageio
+scikit-image
+opencv-contrib-python
+tensorboard-pytorch
+gym
+gym[atari]
+pygame
+sklearn
+atari-py
 bleach==1.5.0
 cffi==1.9.1
-decorator==4.0.11
+decorator #==4.0.11
 entrypoints==0.2.2
-gym==0.8.1
 html5lib==0.999
 ipykernel==4.6.1
 ipython==6.0.0
 ipython-genutils==0.2.0
-Jinja2==2.9.6
+Jinja2 #==2.9.6
 jsonschema==2.6.0
 jupyter-client==5.0.1
 jupyter-core==4.3.0
@@ -24,10 +35,10 @@ opencv-python==3.3.0.10
 pandocfilters==1.4.1
 pexpect==4.2.1
 pickleshare==0.7.4
-Pillow==4.1.0
+Pillow #==4.1.0
 prompt-toolkit==1.0.14
 ptan==0.1
-ptyprocess==0.5.1
+pyprocess #==0.5.1
 pycparser==2.17
 pyglet==1.2.4
 Pygments==2.2.0

@@ -260,9 +260,9 @@ class RewardTracker:
         if telem:
             self.tm = telemetry.ApplicationTelemetry()
         if telem:
-            if not os.path.exists('results'):
-                os.makedirs('results')
-            self.outfile = 'results/output.txt'
+            if not os.path.exists('/results'):
+                os.makedirs('/results')
+            self.outfile = '/results/output.txt'
         else:
             curdir = os.path.abspath(__file__)
             results = os.path.abspath(os.path.join(curdir, '../../../../results'))

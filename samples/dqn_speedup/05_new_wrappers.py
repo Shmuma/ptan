@@ -85,6 +85,8 @@ if __name__ == "__main__":
 
     mp.set_start_method('spawn')
 
+    model = None
+
     if args.file:
         config_file = json.loads(open(args.file, "r").read())
         if 'dqn_model' in config_file:
@@ -101,8 +103,6 @@ if __name__ == "__main__":
     params['plot'] = args.plot
     params['telemetry'] = args.telemetry
 
-    model = None
-
     if args.file:
         for option in params:
             if option in config_file:
@@ -112,8 +112,8 @@ if __name__ == "__main__":
 
     curdir = os.path.abspath(__file__)
     if args.telemetry:
-        model_path = 'results/model'
-        params_path = 'results'
+        model_path = '/results/model'
+        params_path = '/results'
     else:
         model_path = os.path.abspath(os.path.join(curdir, '../../../results/model'))
         params_path = os.path.abspath(os.path.join(curdir, '../../../results'))
@@ -123,7 +123,7 @@ if __name__ == "__main__":
 
     if args.video:
         if args.telemetry:
-            video_path = 'results/video'
+            video_path = '/results/video'
         else:
             video_path = os.path.abspath(os.path.join(curdir, '../../../results/video'))
 
@@ -144,10 +144,10 @@ if __name__ == "__main__":
     env = make_env(params)
 
     if args.fsa:
-        net = dqn_model.FSADQNParallel(env.observation_space.spaces['image'].shape,
+        net = dqn_model.FSADQNAffine(env.observation_space.spaces['image'].shape,
                                            env.observation_space.spaces['logic'].nvec,
                                            env.action_space.n).to(device)
-        model_name = 'FSADQNParallel'
+        model_name = 'FSADQNAffine'
         # net = dqn_model.FSADQNConvOneLogic(env.observation_space.spaces['image'].shape,
         #                        env.observation_space.spaces['logic'].nvec, env.action_space.n).to(device)
     else:
@@ -157,6 +157,8 @@ if __name__ == "__main__":
     dqn_models = {
         'FSADQN': dqn_model.FSADQN,
         'FSADQNParallel': dqn_model.FSADQNParallel,
+        'FSADQNScaling': dqn_model.FSADQNScaling,
+        'FSADQNAffine': dqn_model.FSADQNAffine,
         'FSADQNIndexOutput' : dqn_model.FSADQNIndexOutput,
         'FSADQNATTNMatchingFC': dqn_model.FSADQNATTNMatchingFC,
         'FSADQNATTNMatching': dqn_model.FSADQNATTNMatching,
@@ -172,6 +174,8 @@ if __name__ == "__main__":
                                        env.observation_space.spaces['logic'].nvec,
                                        env.action_space.n).to(device)
         model_name = model
+
+    print("using model {}".format(model_name))
 
     tgt_net = ptan.agent.TargetNet(net)
 
@@ -219,6 +223,7 @@ if __name__ == "__main__":
 
         # train on ERB?
         optimizer.zero_grad()
+        optimizer_tm.zero_grad()
         batch = buffer.sample(params['batch_size'])
         loss_v, tm_loss = common.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=params['gamma'],
                                       cuda=args.cuda, cuda_async=True, fsa=args.fsa, tm_net=tm_net)

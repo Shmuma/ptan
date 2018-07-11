@@ -65,7 +65,7 @@ class JobControl:
     def get_job(self, name, command, machine="ngcv8"):
         name = '"'+name+'"'
         command = '"' + command + '"'
-        return ['ngc batch run', '--name', name, '--image', '"mitnvda18/fsa-atari:0.1"', '--ace', 'nv-us-west-2',
+        return ['ngc batch run', '--name', name, '--image', '"mitnvda18/fsa-atari:latest"', '--ace', 'nv-us-west-2',
                 '--instance', machine , '--commandline', command,  '--result', '/results']
 
     def run_next_job(self):
@@ -77,8 +77,8 @@ class JobControl:
         config = ''.join(config.split())  # remove spaces from config string
         config = '\\"'.join(config.split('"'))  # escape quotes
         command = "echo '" + config + "' > config.json && " \
-                                      "opt/conda/envs/pytorch-py3.6/bin/python " \
-                                      "/workspace/ptan/samples/dqn_speedup/05_new_wrappers.py " \
+                                      "/opt/conda/envs/pytorch-py3.6/bin/python " \
+                                      "samples/dqn_speedup/05_new_wrappers.py " \
                                       "--cuda --telemetry --video --file config.json"
 
         if "machine" in self.jobs[self.jobcounter]:
