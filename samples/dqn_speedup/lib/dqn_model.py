@@ -198,6 +198,101 @@ class FSADQNParallel(nn.Module):
         logic_q = self.fsa_fc(logic/self.fsa_nvec)
         return image_q + logic_q
 
+# estimate q values using image and fsa state in parallel
+# and then add them up in the end
+class FSADQNScaling(nn.Module):
+    def __init__(self, input_shape, fsa_nvec, n_actions):
+        super(FSADQNScaling, self).__init__()
+
+        self.fsa_nvec = torch.tensor(fsa_nvec).float().cuda()
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU()
+        )
+
+        self.fsa_fc = nn.Sequential(
+            nn.Linear(fsa_nvec.shape[0], 512),
+            nn.ReLU(),
+            nn.Linear(512, n_actions)
+        )
+
+        conv_out_size = self._get_conv_out(input_shape)
+        self.fc = nn.Sequential(
+            nn.Linear(conv_out_size, 512),
+            nn.ReLU(),
+            nn.Linear(512, n_actions)
+        )
+
+    def _get_conv_out(self, shape):
+        o = self.conv(torch.zeros(1, *shape))
+        return int(np.prod(o.size()))
+
+    def forward(self, x):
+        image = x['image']
+        fx = image.float() / 256
+        conv_out = self.conv(fx).view(fx.size()[0], -1)
+        image_q = self.fc(conv_out)
+
+        logic = x['logic'].view(fx.size()[0], -1).float()
+        logic_q = self.fsa_fc(logic/self.fsa_nvec)
+        return image_q * logic_q
+
+# estimate q values using image and fsa state in parallel
+# and then add them up in the end
+class FSADQNAffine(nn.Module):
+    def __init__(self, input_shape, fsa_nvec, n_actions):
+        super(FSADQNAffine, self).__init__()
+
+        self.fsa_nvec = torch.tensor(fsa_nvec).float().cuda()
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU()
+        )
+
+        self.fsa_fc = nn.Sequential(
+            nn.Linear(fsa_nvec.shape[0], 512),
+            nn.ReLU(),
+            nn.Linear(512, n_actions)
+        )
+
+        self.fsa_fc2 = nn.Sequential(
+            nn.Linear(fsa_nvec.shape[0], 512),
+            nn.ReLU(),
+            nn.Linear(512, n_actions)
+        )
+
+        conv_out_size = self._get_conv_out(input_shape)
+        self.fc = nn.Sequential(
+            nn.Linear(conv_out_size, 512),
+            nn.ReLU(),
+            nn.Linear(512, n_actions)
+        )
+
+    def _get_conv_out(self, shape):
+        o = self.conv(torch.zeros(1, *shape))
+        return int(np.prod(o.size()))
+
+    def forward(self, x):
+        image = x['image']
+        fx = image.float() / 256
+        conv_out = self.conv(fx).view(fx.size()[0], -1)
+        image_q = self.fc(conv_out)
+
+        logic = x['logic'].view(fx.size()[0], -1).float()
+        logic_q = self.fsa_fc(logic/self.fsa_nvec)
+        logic_q2 = self.fsa_fc2(logic/self.fsa_nvec)
+        return image_q * logic_q + logic_q2
+
 # outputs a tensor that can be indexed by logic state
 class FSADQNIndexOutput(nn.Module):
     def __init__(self, input_shape, fsa_nvec, n_actions):

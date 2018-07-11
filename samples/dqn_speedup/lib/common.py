@@ -92,7 +92,7 @@ HYPERPARAMS = {
     },
     'fsa-invaders': {
         'env_name': "fsa-SpaceInvadersNoFrameskip-v4",
-        'stop_reward': 10.0,
+        'stop_reward': 50.0,
         'run_name': 'fsa-invaders',
         'replay_size': 10 ** 6,
         'replay_initial': 50000,
@@ -260,9 +260,9 @@ class RewardTracker:
         if telem:
             self.tm = telemetry.ApplicationTelemetry()
         if telem:
-            if not os.path.exists('results'):
-                os.makedirs('results')
-            self.outfile = 'results/output.txt'
+            if not os.path.exists('/results'):
+                os.makedirs('/results')
+            self.outfile = '/results/output.txt'
         else:
             curdir = os.path.abspath(__file__)
             results = os.path.abspath(os.path.join(curdir, '../../../../results'))

@@ -1,4 +1,3 @@
-
 FROM nvcr.io/nvidia/pytorch:18.06-py3
 MAINTAINER Brandon Araki <araki@mit.edu>
 
@@ -34,7 +33,5 @@ RUN pip install --extra-index-url=https://packages.nvidia.com/ngc/ngc-sdk/pypi/s
 COPY fsa-atari/ .
 RUN pip install -e gym-fsa-atari
 
-COPY setup.py .
-RUN python setup.py install
-
 COPY . .
+RUN python setup.py install

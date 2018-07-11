@@ -6,11 +6,11 @@ imageio
 scikit-image
 opencv-contrib-python
 tensorboard-pytorch
-gym==0.8.1
+gym
 gym[atari]
 pygame
 sklearn
-atari-py==0.0.21
+atari-py
 bleach==1.5.0
 cffi==1.9.1
 decorator #==4.0.11
