@@ -48,7 +48,7 @@ class LogicOracleSpaceInvaders(LogicOracle):
 
         left = ram[16] % 2  # whether the aliens are heading left
 
-        # return (laser, saucer, aliens, dead)
+        # return (real_laser, saucer, aliens, dead)
         # return (laser, aliens)
         return (real_laser)
 

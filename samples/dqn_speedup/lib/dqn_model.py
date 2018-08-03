@@ -198,6 +198,12 @@ class FSADQNBias(nn.Module):
         logic_q = self.fsa_fc(logic/self.fsa_nvec)
         return image_q + logic_q
 
+class FSADQNBiasIndex(FSADQNBias):
+
+    def __init__(self, input_shape, fsa_nvec, n_actions):
+        FSADQNBias.__init__(self, input_shape, fsa_nvec, n_actions)
+
+
 # estimate q values using image and fsa state in parallel
 # and then add them up in the end
 class FSADQNScaling(nn.Module):
