@@ -11,7 +11,7 @@ Debug Mode: False
 CLI output format type: json
 """
 
-job_name_prefix = "test"
+job_name_prefix = "only_real_laser"
 
 jobs = [
 #     {
@@ -63,7 +63,7 @@ jobs = [
         "machine": "ngcv4",
         "replay_initial": 50000,
         "video_interval": 1000000,
-        "frame_stop": 10010000,
+        "frame_stop": 3010000,
         "dqn_model": "FSADQNBias"
     }
     # {

@@ -30,7 +30,7 @@ def visualize_data(job_list):
         model_name = model_info[2]
         tm_acc = model_info[1]
         ave_score = model_info[0]
-        print("{} | TM acc: {} | Ave score: {}".format(model_name, tm_acc, ave_score))
+        print("{} | {} | TM acc: {} | Ave score: {}".format(job_id, model_name, tm_acc, ave_score))
 
         params_path = results_path + paramfile
         param_dict = yaml.load(open(params_path))
@@ -44,8 +44,8 @@ def visualize_data(job_list):
                 plt.subplot(subplot_num)
                 plt.ylabel(key)
                 plt.xlabel('games')
-                plt.plot(results[job_id]['games'], results[job_id][key], label="{}: e frames: {:9} | lr: {:10.7}".format(
-                    model_name, int(param_dict['epsilon_frames']), format(float(param_dict['learning_rate']), 'f')))
+                plt.plot(results[job_id]['games'], results[job_id][key], label="{} | {}: e frames: {:9} | lr: {:10.7}".format(
+                    job_id, model_name, int(param_dict['epsilon_frames']), format(float(param_dict['learning_rate']), 'f')))
                 i += 1
     plt.legend()
     plt.show()
@@ -58,11 +58,14 @@ if __name__ == "__main__":
     # Best DQN: 81001, lr: 0.001
 
     # Affine: 81389, 81390, 81391
-    # Bias: 80941
+    # Bias: 80941, 82000, 81999, 81998 | BEST: 81999
     # Scaling: 80940, 80939, 80938
 
-    # 10 million frame runs: 81664, 81665, 81666
-    job_list = [81664, 81665, 81666]
+    # 10 million frame runs: 81664, 81665, 81666, 82109
+
+    # Lasers only: 90820 [messed up], 91649
+    job_list = [90820, 91649, 91702]
+    # job_list = [81664, 81665, 81666, 82109]
     # job_list = [81389, 81390, 81391, 80456]
     # job_list = [81389, 81390, 81391, 81001]
     # job_list = [80380, 81001, 81002]

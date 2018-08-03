@@ -28,9 +28,12 @@ class LogicOracleSpaceInvaders(LogicOracle):
 
     def get_logic_state(self, ram):
 
-        laser, saucer, dead = [0] * 3
+        real_laser, laser, saucer, dead = [0] * 4
         if ram[78] != 0:
             laser = 1
+
+        if ram[85] != 246:
+            real_laser = 1
 
         if ram[76] == 4:
             saucer = 1
@@ -46,15 +49,18 @@ class LogicOracleSpaceInvaders(LogicOracle):
         left = ram[16] % 2  # whether the aliens are heading left
 
         # return (laser, saucer, aliens, dead)
-        return (laser, aliens)
+        # return (laser, aliens)
+        return (real_laser)
 
     def get_logic_meanings(self):
         # return ['Laser Active', 'Saucer Present', 'Remaining Aliens', 'Player Death']
-        return ['Laser Active', 'Remaining Aliens']
+        # return ['Laser Active', 'Remaining Aliens']
+        return ['Laser Active']
 
     def get_logic_observation_space(self):
         # return spaces.MultiDiscrete([2, 2, 4, 2])
-        return spaces.MultiDiscrete([2, 4])
+        # return spaces.MultiDiscrete([2, 4])
+        return spaces.MultiDiscrete([2])
 
 
 class LogicOracleMontezumaRevenge(LogicOracle):

@@ -120,6 +120,11 @@ def play(env, transpose=True, fps=30, zoom=None, callback=None, keys_to_action=N
         if obs is not None:
             im = obs['image']
             logic = obs['logic']
+            ram = env.env._get_ram()
+            # didnt work: < 80
+            # print("{:3d} {:3d} {:3d} {:3d}".format(ram[78], ram[76], ram[83], ram[84]))
+            # print(ram[85:90])
+            print(logic)
             if len(im.shape) == 2:
                 im = im[:, :, None]
             if im.shape[2] == 1:
@@ -182,4 +187,4 @@ class PlayPlot(object):
 
 if __name__ == '__main__':
     env = gym.make("fsa-SpaceInvadersNoFrameskip-v4")
-    play(env, zoom=4, fps=60)
+    play(env, zoom=4, fps=40)
