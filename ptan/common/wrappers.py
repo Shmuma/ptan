@@ -222,6 +222,22 @@ class ImageToPyTorch(gym.ObservationWrapper):
     def observation(self, observation):
         return np.swapaxes(observation, 2, 0)
 
+def wrap_dqn(env, stack_frames=4, episodic_life=True, reward_clipping=True):
+    """Apply a common set of wrappers for Atari games."""
+    assert 'NoFrameskip' in env.spec.id
+    if episodic_life:
+        env = EpisodicLifeEnv(env)
+    env = NoopResetEnv(env, noop_max=30)
+    env = MaxAndSkipEnv(env, skip=4)
+    if 'FIRE' in env.unwrapped.get_action_meanings():
+        env = FireResetEnv(env)
+    env = ProcessFrame84(env)
+    env = ImageToPyTorch(env)
+    env = FrameStack(env, stack_frames)
+    if reward_clipping:
+        env = ClippedRewardsWrapper(env)
+    return env
+
 
 def wrap_dqn(env, stack_frames=4, episodic_life=True, reward_clipping=True):
     """Apply a common set of wrappers for Atari games."""
