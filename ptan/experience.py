@@ -354,7 +354,7 @@ class ExperienceReplayBuffer:
             self.buffer.append(sample)
         else:
             self.buffer[self.pos] = sample
-            self.pos = (self.pos + 1) % self.capacity
+        self.pos = (self.pos + 1) % self.capacity
 
     def populate(self, samples):
         """
