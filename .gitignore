@@ -7,3 +7,4 @@ res*
 dist
 build
 .swp
+.vscode/tags
