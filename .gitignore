@@ -8,3 +8,4 @@ dist
 build
 .swp
 .vscode/tags
+.vscode/settings.json
