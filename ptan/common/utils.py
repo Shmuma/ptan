@@ -312,7 +312,7 @@ class TBMeanTracker:
             tensor_val = value
 
         if tensor_val is not None:
-            return tensor_val.float().mean()
+            return tensor_val.float().mean().item()
         elif isinstance(value, np.ndarray):
             return float(np.mean(value))
         else:
