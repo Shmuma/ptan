@@ -107,10 +107,13 @@ class ExperienceSource:
                         yield tuple(history)
                     states[idx] = next_state
                     if is_done:
-                        # generate tail of history
-                        while len(history) >= 1:
+                        # in case of very short episode (shorter than our steps count), send gathered history
+                        if len(history) < self.steps_count:
                             yield tuple(history)
+                        # generate tail of history
+                        while len(history) > 1:
                             history.popleft()
+                            yield tuple(history)
                         self.total_rewards.append(cur_rewards[idx])
                         self.total_steps.append(cur_steps[idx])
                         cur_rewards[idx] = 0.0
