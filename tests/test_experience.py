@@ -7,7 +7,29 @@ from ptan import experience, agent
 
 class DummyAgent(agent.BaseAgent):
     def __call__(self, states, agent_states):
-        return np.zeros(shape=(states.shape[0], ), dtype=np.int32), agent_states
+        if isinstance(states, list):
+            l = len(states)
+        else:
+            l = states.shape[0]
+        return np.zeros(shape=(l, ), dtype=np.int32), agent_states
+
+
+class CountingEnv(gym.Env):
+    def __init__(self, limit=5):
+        self.state = 0
+        self.limit = limit
+        self.observation_space = gym.spaces.Discrete(limit)
+        self.action_space = gym.spaces.Discrete(2)
+
+    def reset(self):
+        self.state = 0
+        return self.state
+
+    def step(self, action):
+        self.state += 1
+        done = self.state == self.limit-1
+        reward = self.state
+        return self.state, reward, done, {}
 
 
 class TestExperienceSourceSingleEnv(TestCase):
@@ -106,7 +128,7 @@ class TestExperienceReplayBuffer(TestCase):
         self.assertEqual(2, len(buf))
 
     def test_sample(self):
-        buf = experience.ExperienceReplayBuffer(self.source)
+        buf = experience.ExperienceReplayBuffer(self.source, buffer_size=10)
         buf.populate(10)
         b = buf.sample(4)
         self.assertEqual(4, len(b))
@@ -127,3 +149,18 @@ class TestUtils(TestCase):
         self.assertEqual(r, [[1], [2], [3]])
         r = experience._group_list([1, 2, 3], [1, 2])
         self.assertEqual(r, [[1], [2, 3]])
+
+
+class TestExperienceSourceFirstLast(TestCase):
+    def test_simple(self):
+        env = CountingEnv()
+        agent = DummyAgent()
+        exp_source = experience.ExperienceSourceFirstLast(env, agent, gamma=1.0, steps_count=1)
+        states = []
+        for idx, exp in enumerate(exp_source):
+            states.append(exp.state)
+            if idx > 5:
+                break
+        # NB: there is no last state(4), as we don't record it
+        self.assertEquals(states, [0, 1, 2, 3, 0, 1, 2])
+
