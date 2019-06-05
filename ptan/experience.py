@@ -108,9 +108,8 @@ class ExperienceSource:
                     states[idx] = next_state
                     if is_done:
                         # generate tail of history
-                        while len(history) >= 1:
+                        if len(history) >= 1:
                             yield tuple(history)
-                            history.popleft()
                         self.total_rewards.append(cur_rewards[idx])
                         self.total_steps.append(cur_steps[idx])
                         cur_rewards[idx] = 0.0
