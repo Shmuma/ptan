@@ -108,7 +108,7 @@ class ExperienceSource:
                     states[idx] = next_state
                     if is_done:
                         # in case of very short episode (shorter than our steps count), send gathered history
-                        if len(history) < self.steps_count:
+                        if 0 < len(history) < self.steps_count:
                             yield tuple(history)
                         # generate tail of history
                         while len(history) > 1:
