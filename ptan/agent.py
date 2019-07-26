@@ -63,6 +63,7 @@ class DQNAgent(BaseAgent):
         self.preprocessor = preprocessor
         self.device = device
 
+    @torch.no_grad()
     def __call__(self, states, agent_states=None):
         if agent_states is None:
             agent_states = [None] * len(states)
@@ -114,6 +115,7 @@ class PolicyAgent(BaseAgent):
         self.apply_softmax = apply_softmax
         self.preprocessor = preprocessor
 
+    @torch.no_grad()
     def __call__(self, states, agent_states=None):
         """
         Return actions from given list of states
@@ -147,6 +149,7 @@ class ActorCriticAgent(BaseAgent):
         self.apply_softmax = apply_softmax
         self.preprocessor = preprocessor
 
+    @torch.no_grad()
     def __call__(self, states, agent_states=None):
         """
         Return actions from given list of states
