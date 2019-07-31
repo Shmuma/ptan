@@ -4,6 +4,9 @@ PTAN stands for PyTorch AgentNet -- reimplementation of AgentNet library for pyt
 import setuptools
 
 
+requirements = ['torch==1.1.0', 'gym', 'atari-py', 'numpy', 'opencv-python']
+
+
 setuptools.setup(
     name="ptan",
     author="Max Lapan",
@@ -12,4 +15,5 @@ setuptools.setup(
     description="PyTorch reinforcement learning framework",
     version="0.5",
     packages=setuptools.find_packages(),
+    install_requires=requirements,
 )

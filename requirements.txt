@@ -3,4 +3,5 @@ opencv-python
 gym
 atari-py
 nose
-torch==1.0.1.post2
+torch==1.1.0
+torch-ignite==0.2.0
