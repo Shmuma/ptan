@@ -57,9 +57,17 @@ class EpisodeFPSHandler:
         self._started_ts = time.time()
         self._fps_smooth_alpha = fps_smooth_alpha
 
-    def attach(self, engine: Engine):
-        self._timer.attach(engine, step=Events.ITERATION_COMPLETED)
+    def attach(self, engine: Engine, manual_step: bool = False):
+        self._timer.attach(engine, step=None if manual_step else Events.ITERATION_COMPLETED)
         engine.add_event_handler(EpisodeEvents.EPISODE_COMPLETED, self)
+
+    def step(self):
+        """
+        If manual_step=True on attach(), this method should be used every time we've communicated with environment
+        to get proper FPS
+        :return:
+        """
+        self._timer.step()
 
     def __call__(self, engine: Engine):
         t_val = self._timer.value()
