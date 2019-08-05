@@ -44,5 +44,8 @@ pip install opencv-python
 
 ## Documentation
 
-Is not yet written :(. But has planned :) Before it has happend, there are random pieces of lib discussions which could be useful:
+* [Ptan introduction](docs/intro.ipynb)
+
+Random pieces of information
+
 * `ExperienceSource` vs `ExperienceSourceFirstLast`: https://github.com/Shmuma/ptan/issues/17#issuecomment-489584115
