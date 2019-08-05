@@ -26,10 +26,11 @@ pip install pip install git+https://github.com/Shmuma/ptan.git
 
 ## Requirements
 
-* [PyTorch](http://pytorch.org/): version 0.4 is required, 0.3.1 is supported by old version ptan==0.2.1
+* [PyTorch](http://pytorch.org/): version 1.1.0 is required
+* [PyTorch Ignite](https://pytorch.org/ignite/): provides extra bindings for ignite
 * [OpenAI Gym](https://gym.openai.com/): ```pip install gym gym[atari]```
 * [Python OpenCV](https://pypi.org/project/opencv-python/): ```pip install opencv-python```
-* [TensorBoard for PyTorch](https://github.com/lanpa/tensorboard-pytorch): ```pip install tensorboard-pytorch```
+* [TensorBoardX](https://github.com/lanpa/tensorboardX): ```pip install tensorboardX```
 
 ### Note for [Anaconda Python](https://anaconda.org/anaconda/python) users
 
