@@ -89,6 +89,8 @@ class PeriodEvents(enum.Enum):
     ITERS_10_COMPLETED = "iterations_10_completed"
     ITERS_100_COMPLETED = "iterations_100_completed"
     ITERS_1000_COMPLETED = "iterations_1000_completed"
+    ITERS_10000_COMPLETED = "iterations_10000_completed"
+    ITERS_100000_COMPLETED = "iterations_100000_completed"
 
 
 class PeriodicEvents:
@@ -101,6 +103,8 @@ class PeriodicEvents:
         10: PeriodEvents.ITERS_10_COMPLETED,
         100: PeriodEvents.ITERS_100_COMPLETED,
         1000: PeriodEvents.ITERS_1000_COMPLETED,
+        10000: PeriodEvents.ITERS_10000_COMPLETED,
+        100000: PeriodEvents.ITERS_100000_COMPLETED,
     }
 
     def attach(self, engine: Engine):
