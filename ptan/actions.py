@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Union
 
 
 class ActionSelector:
@@ -43,3 +44,22 @@ class ProbabilityActionSelector(ActionSelector):
         for prob in probs:
             actions.append(np.random.choice(len(prob), p=prob))
         return np.array(actions)
+
+
+class EpsilonTracker:
+    """
+    Updates epsilon according to linear schedule
+    """
+    def __init__(self, selector: EpsilonGreedyActionSelector,
+                 eps_start: Union[int, float],
+                 eps_final: Union[int, float],
+                 eps_frames: int):
+        self.selector = selector
+        self.eps_start = eps_start
+        self.eps_final = eps_final
+        self.eps_frames = eps_frames
+        self.frame(0)
+
+    def frame(self, frame: int):
+        eps = self.eps_start - frame / self.eps_frames
+        self.selector.epsilon = max(self.eps_final, eps)
