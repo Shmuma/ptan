@@ -10,6 +10,7 @@ from ignite.handlers.timing import Timer
 class EpisodeEvents(enum.Enum):
     EPISODE_COMPLETED = "episode_completed"
     BOUND_REWARD_REACHED = "bound_reward_reached"
+    BEST_REWARD_REACHED = "best_reward_reached"
 
 
 class EndOfEpisodeHandler:
@@ -26,6 +27,7 @@ class EndOfEpisodeHandler:
         self._exp_source = exp_source
         self._alpha = alpha
         self._bound_avg_reward = bound_avg_reward
+        self._best_avg_reward = None
         self._subsample_end_of_episode = subsample_end_of_episode
 
     def attach(self, engine: Engine):
@@ -33,6 +35,7 @@ class EndOfEpisodeHandler:
         engine.register_events(*EpisodeEvents)
         State.event_to_attr[EpisodeEvents.EPISODE_COMPLETED] = "episode"
         State.event_to_attr[EpisodeEvents.BOUND_REWARD_REACHED] = "episode"
+        State.event_to_attr[EpisodeEvents.BEST_REWARD_REACHED] = "episode"
 
     def __call__(self, engine: Engine):
         for reward, steps in self._exp_source.pop_rewards_steps():
@@ -46,6 +49,10 @@ class EndOfEpisodeHandler:
                 engine.fire_event(EpisodeEvents.EPISODE_COMPLETED)
             if self._bound_avg_reward is not None and engine.state.metrics['avg_reward'] >= self._bound_avg_reward:
                 engine.fire_event(EpisodeEvents.BOUND_REWARD_REACHED)
+            if self._best_avg_reward is None:
+                self._best_avg_reward = engine.state.metrics['avg_reward']
+            elif self._best_avg_reward < engine.state.metrics['avg_reward']:
+                engine.fire_event(EpisodeEvents.BEST_REWARD_REACHED)
 
     def _update_smoothed_metrics(self, engine: Engine, reward: float, steps: int):
         for attr_name, val in zip(('avg_reward', 'avg_steps'), (reward, steps)):
