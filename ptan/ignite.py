@@ -53,6 +53,7 @@ class EndOfEpisodeHandler:
                 self._best_avg_reward = engine.state.metrics['avg_reward']
             elif self._best_avg_reward < engine.state.metrics['avg_reward']:
                 engine.fire_event(EpisodeEvents.BEST_REWARD_REACHED)
+                self._best_avg_reward = engine.state.metrics['avg_reward']
 
     def _update_smoothed_metrics(self, engine: Engine, reward: float, steps: int):
         for attr_name, val in zip(('avg_reward', 'avg_steps'), (reward, steps)):
