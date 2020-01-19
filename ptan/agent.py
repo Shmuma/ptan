@@ -71,7 +71,7 @@ class DQNAgent(BaseAgent):
             states = self.preprocessor(states)
             if torch.is_tensor(states):
                 states = states.to(self.device)
-        q_v = self.dqn_model(states)
+        q_v = self.dqn_model(states.float())
         q = q_v.data.cpu().numpy()
         actions = self.action_selector(q)
         return actions, agent_states
@@ -128,7 +128,7 @@ class PolicyAgent(BaseAgent):
             states = self.preprocessor(states)
             if torch.is_tensor(states):
                 states = states.to(self.device)
-        probs_v = self.model(states)
+        probs_v = self.model(states.float())
         if self.apply_softmax:
             probs_v = F.softmax(probs_v, dim=1)
         probs = probs_v.data.cpu().numpy()
@@ -160,7 +160,7 @@ class ActorCriticAgent(BaseAgent):
             states = self.preprocessor(states)
             if torch.is_tensor(states):
                 states = states.to(self.device)
-        probs_v, values_v = self.model(states)
+        probs_v, values_v = self.model(states.float())
         if self.apply_softmax:
             probs_v = F.softmax(probs_v, dim=1)
         probs = probs_v.data.cpu().numpy()
