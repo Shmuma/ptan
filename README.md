@@ -5,7 +5,7 @@ PTAN stands for PyTorch AgentNet -- reimplementation of
 [AgentNet](https://github.com/yandexdataschool/AgentNet) library for
 [PyTorch](http://pytorch.org/)
 
-This library was used in ["Practical Deep Reinforcement Learning"](https://www.packtpub.com/big-data-and-business-intelligence/practical-deep-reinforcement-learning) book, here you can find [sample sources](https://github.com/PacktPublishing/Practical-Deep-Reinforcement-Learning).
+This library was used in ["Deep Reinforcement Learning Hands-On"](https://www.packtpub.com/data/deep-reinforcement-learning-hands-on-second-edition) book, here you can find [sample sources](https://github.com/PacktPublishing/Deep-Reinforcement-Learning-Hands-On).
 
 ## Installation
 
