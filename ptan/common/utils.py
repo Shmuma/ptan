@@ -349,9 +349,9 @@ class RewardTracker:
     def __exit__(self, *args):
         self.writer.close()
 
-    def reward(self, reward, frame, epsilon=None):
+    def reward(self, reward, frame, epsilon=None, avg_size=100):
         self.total_rewards.append(reward)
-        mean_reward = np.mean(self.total_rewards[-100:])
+        mean_reward = np.mean(self.total_rewards[-avg_size:])
         ts_diff = time.time() - self.ts
         if ts_diff > self.min_ts_diff:
             speed = (frame - self.ts_frame) / ts_diff
