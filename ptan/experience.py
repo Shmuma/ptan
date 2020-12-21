@@ -496,8 +496,8 @@ class QLearningPreprocessor(BatchPreprocessor):
         return QLearningPreprocessor(model=model, target_model=None, use_double_dqn=False, **kwargs)
 
     @staticmethod
-    def target_dqn(model, target_model, **kwards):
-        return QLearningPreprocessor(model, target_model, use_double_dqn=False, **kwards)
+    def target_dqn(model, target_model, **kwargs):
+        return QLearningPreprocessor(model, target_model, use_double_dqn=False, **kwargs)
 
     @staticmethod
     def double_dqn(model, target_model, **kwargs):
