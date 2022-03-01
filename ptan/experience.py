@@ -107,18 +107,23 @@ class ExperienceSource:
                         yield tuple(history)
                     states[idx] = next_state
                     if is_done:
-                        # generate tail of history
-                        while 1<=len(history)<= self.steps_count:
-                            if len(history)==1:
+                        # in case of very short episode (shorter than our steps count), send gathered history
+                        if 0 < len(history) < self.steps_count:
+                            if len(history) == 1:
                                 self.total_rewards.append(cur_rewards[idx])
                                 self.total_steps.append(cur_steps[idx])
                                 cur_rewards[idx] = 0.0
                                 cur_steps[idx] = 0
-                                yield tuple(history)
-                                break
-                            else:
-                                yield tuple(history)
-                                history.popleft()
+                            yield tuple(history)
+                        # generate tail of history
+                        while len(history)>1:
+                            history.popleft()
+                            if len(history) == 1:
+                                self.total_rewards.append(cur_rewards[idx])
+                                self.total_steps.append(cur_steps[idx])
+                                cur_rewards[idx] = 0.0
+                                cur_steps[idx] = 0
+                            yield tuple(history)
                         # vectorized envs are reset automatically
                         states[idx] = env.reset() if not self.vectorized else None
                         agent_states[idx] = self.agent.initial_state()
