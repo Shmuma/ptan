@@ -2,8 +2,8 @@
 # Mostly copy-pasted from https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.py
 import numpy as np
 from collections import deque
-import gym
-from gym import spaces
+import gymnasium as gym
+from gymnasium import spaces
 import cv2
 
 
@@ -20,9 +20,9 @@ class NoopResetEnv(gym.Wrapper):
     def step(self, action):
         return self.env.step(action)
 
-    def reset(self):
+    def reset(self, **kwargs):
         """ Do no-op action for a number of steps in [1, noop_max]."""
-        self.env.reset()
+        self.env.reset(**kwargs)
         if self.override_num_noops is not None:
             noops = self.override_num_noops
         else:
@@ -30,10 +30,10 @@ class NoopResetEnv(gym.Wrapper):
         assert noops > 0
         obs = None
         for _ in range(noops):
-            obs, _, done, _ = self.env.step(0)
+            obs, _, done, _, info = self.env.step(0)
             if done:
-                obs = self.env.reset()
-        return obs
+                obs, info = self.env.reset()
+        return obs, info
 
 
 class FireResetEnv(gym.Wrapper):
@@ -46,15 +46,15 @@ class FireResetEnv(gym.Wrapper):
     def step(self, action):
         return self.env.step(action)
 
-    def reset(self):
-        self.env.reset()
-        obs, _, done, _ = self.env.step(1)
+    def reset(self, **kwargs):
+        self.env.reset(**kwargs)
+        obs, _, done, _, info = self.env.step(1)
         if done:
             self.env.reset()
-        obs, _, done, _ = self.env.step(2)
+        obs, _, done, _, info = self.env.step(2)
         if done:
             self.env.reset()
-        return obs
+        return obs, info
 
 
 class EpisodicLifeEnv(gym.Wrapper):
@@ -68,33 +68,32 @@ class EpisodicLifeEnv(gym.Wrapper):
         self.was_real_reset = False
 
     def step(self, action):
-        obs, reward, done, info = self.env.step(action)
+        obs, reward, done, _, info = self.env.step(action)
         self.was_real_done = done
         # check current lives, make loss of life terminal,
         # then update lives to handle bonus lives
         lives = self.env.unwrapped.ale.lives()
         if lives < self.lives and lives > 0:
             # for Qbert somtimes we stay in lives == 0 condtion for a few frames
-            # so its important to keep lives > 0, so that we only reset once
-            # the environment advertises done.
+            # so its important to keep lives > 0, so that we only reset once the environment advertises done.
             done = True
         self.lives = lives
-        return obs, reward, done, info
+        return obs, reward, done, _, info
 
-    def reset(self):
+    def reset(self, **kwargs):
         """Reset only when lives are exhausted.
         This way all states are still reachable even though lives are episodic,
         and the learner need not know about any of this behind-the-scenes.
         """
         if self.was_real_done:
-            obs = self.env.reset()
+            obs, info = self.env.reset(**kwargs)
             self.was_real_reset = True
         else:
             # no-op step to advance from terminal/lost life state
-            obs, _, _, _ = self.env.step(0)
+            obs, _, _, _, info = self.env.step(0)
             self.was_real_reset = False
         self.lives = self.env.unwrapped.ale.lives()
-        return obs
+        return obs, info
 
 
 class MaxAndSkipEnv(gym.Wrapper):
@@ -109,22 +108,20 @@ class MaxAndSkipEnv(gym.Wrapper):
         total_reward = 0.0
         done = None
         for _ in range(self._skip):
-            obs, reward, done, info = self.env.step(action)
+            obs, reward, done, _, info = self.env.step(action)
             self._obs_buffer.append(obs)
             total_reward += reward
             if done:
                 break
-
         max_frame = np.max(np.stack(self._obs_buffer), axis=0)
+        return max_frame, total_reward, done, _, info
 
-        return max_frame, total_reward, done, info
-
-    def reset(self):
+    def reset(self, **kwargs):
         """Clear past frame buffer and init. to first obs. from inner env."""
         self._obs_buffer.clear()
-        obs = self.env.reset()
+        obs, info = self.env.reset(**kwargs)
         self._obs_buffer.append(obs)
-        return obs
+        return obs, info
 
 
 class ProcessFrame84(gym.ObservationWrapper):
@@ -184,18 +181,19 @@ class FrameStack(gym.Wrapper):
         self.k = k
         self.frames = deque([], maxlen=k)
         shp = env.observation_space.shape
-        self.observation_space = spaces.Box(low=0, high=255, shape=(shp[0]*k, shp[1], shp[2]), dtype=np.float32)
+        self.observation_space = spaces.Box(
+            low=0, high=255, shape=(shp[0]*k, shp[1], shp[2]), dtype=np.float32)
 
-    def reset(self):
-        ob = self.env.reset()
+    def reset(self, **kwargs):
+        ob, info = self.env.reset(**kwargs)
         for _ in range(self.k):
             self.frames.append(ob)
-        return self._get_ob()
+        return self._get_ob(), info
 
     def step(self, action):
-        ob, reward, done, info = self.env.step(action)
+        ob, reward, done, _, info = self.env.step(action)
         self.frames.append(ob)
-        return self._get_ob(), reward, done, info
+        return self._get_ob(), reward, done, _, info
 
     def _get_ob(self):
         assert len(self.frames) == self.k
@@ -216,11 +214,13 @@ class ImageToPyTorch(gym.ObservationWrapper):
     def __init__(self, env):
         super(ImageToPyTorch, self).__init__(env)
         old_shape = self.observation_space.shape
-        self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(old_shape[-1], old_shape[0], old_shape[1]),
-                                                dtype=np.float32)
+        new_shape = (old_shape[-1], old_shape[0], old_shape[1])
+        self.observation_space = gym.spaces.Box(
+            low=0.0, high=1.0, shape=new_shape, dtype=np.float32)
 
     def observation(self, observation):
         return np.swapaxes(observation, 2, 0)
+
 
 
 def wrap_dqn(env, stack_frames=4, episodic_life=True, reward_clipping=True):
@@ -237,4 +237,5 @@ def wrap_dqn(env, stack_frames=4, episodic_life=True, reward_clipping=True):
     env = FrameStack(env, stack_frames)
     if reward_clipping:
         env = ClippedRewardsWrapper(env)
+
     return env
