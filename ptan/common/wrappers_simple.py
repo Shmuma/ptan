@@ -1,7 +1,7 @@
 """
 Simple wrappers
 """
-import gym
+import gymnasium as gym
 import numpy as np
 import collections
 
@@ -24,7 +24,7 @@ class FrameStack1D(gym.Wrapper):
                                                 dtype=env.observation_space.dtype)
 
     def reset(self):
-        ob = self.env.reset()
+        ob = self.env.reset()[0]
         for _ in range(self.k):
             self.frames.append(ob)
         return self._get_ob()
