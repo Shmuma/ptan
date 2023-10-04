@@ -89,9 +89,9 @@ class ExperienceSource:
             global_ofs = 0
             for env_idx, (env, action_n) in enumerate(zip(self.pool, grouped_actions)):
                 if self.vectorized:
-                    next_state_n, r_n, is_done_n, _ = env.step(action_n)
+                    next_state_n, r_n, is_done_n, _, _ = env.step(action_n)
                 else:
-                    next_state, r, is_done, _ = env.step(action_n[0])
+                    next_state, r, is_done, _, _ = env.step(action_n[0])
                     next_state_n, r_n, is_done_n = [next_state], [r], [is_done]
 
                 for ofs, (action, next_state, r, is_done) in enumerate(zip(action_n, next_state_n, r_n, is_done_n)):
@@ -250,7 +250,7 @@ class ExperienceSourceRollouts:
             dones = []
             new_states = []
             for env_idx, (e, action) in enumerate(zip(self.pool, actions)):
-                o, r, done, _ = e.step(action)
+                o, r, done, _, _ = e.step(action)
                 total_rewards[env_idx] += r
                 total_steps[env_idx] += 1
                 if done:
