@@ -30,7 +30,7 @@ class NoopResetEnv(gym.Wrapper):
         assert noops > 0
         obs = None
         for _ in range(noops):
-            obs, _, done, _ = self.env.step(0)
+            obs, _, done, _, _ = self.env.step(0)
             if done:
                 obs = self.env.reset()
         return obs
@@ -48,10 +48,10 @@ class FireResetEnv(gym.Wrapper):
 
     def reset(self):
         self.env.reset()
-        obs, _, done, _ = self.env.step(1)
+        obs, _, done, _, _ = self.env.step(1)
         if done:
             self.env.reset()
-        obs, _, done, _ = self.env.step(2)
+        obs, _, done, _, _ = self.env.step(2)
         if done:
             self.env.reset()
         return obs
@@ -68,7 +68,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         self.was_real_reset = False
 
     def step(self, action):
-        obs, reward, done, info = self.env.step(action)
+        obs, reward, done, info, _ = self.env.step(action)
         self.was_real_done = done
         # check current lives, make loss of life terminal,
         # then update lives to handle bonus lives
@@ -91,7 +91,7 @@ class EpisodicLifeEnv(gym.Wrapper):
             self.was_real_reset = True
         else:
             # no-op step to advance from terminal/lost life state
-            obs, _, _, _ = self.env.step(0)
+            obs, _, _, _, _ = self.env.step(0)
             self.was_real_reset = False
         self.lives = self.env.unwrapped.ale.lives()
         return obs
@@ -109,7 +109,7 @@ class MaxAndSkipEnv(gym.Wrapper):
         total_reward = 0.0
         done = None
         for _ in range(self._skip):
-            obs, reward, done, info = self.env.step(action)
+            obs, reward, done, info, _ = self.env.step(action)
             self._obs_buffer.append(obs)
             total_reward += reward
             if done:
@@ -193,7 +193,7 @@ class FrameStack(gym.Wrapper):
         return self._get_ob()
 
     def step(self, action):
-        ob, reward, done, info = self.env.step(action)
+        ob, reward, done, info, _ = self.env.step(action)
         self.frames.append(ob)
         return self._get_ob(), reward, done, info
 
