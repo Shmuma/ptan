@@ -6,4 +6,3 @@ opencv-python==4.9.0.80
 torch==2.1.2
 torchvision==0.16.2
 pytorch-ignite==0.4.13
-nose
