@@ -7,3 +7,4 @@ torch==2.2.0
 torchvision==0.17.0
 pytorch-ignite==0.4.13
 stable-baselines3==2.2.1
+pyarrow==15.0.0
