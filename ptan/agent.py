@@ -43,6 +43,23 @@ class BaseAgent(abc.ABC):
     """
     Base Agent, sharing most of logic with concrete agent implementations.
     """
+    def initial_state(self) -> tt.Optional[tt.Any]:
+        """
+        Should create initial empty state for the agent. It will be
+        called for the start of the episode
+        :return: Anything agent want to remember
+        """
+        return None
+
+    @abc.abstractmethod
+    def __call__(self, states: States, agent_states: AgentStates) -> tt.Tuple[np.ndarray, AgentStates]:
+        ...
+
+
+class NNAgent(BaseAgent):
+    """
+    Network-based agent
+    """
     def __init__(self, model: nn.Module, action_selector: actions.ActionSelector,
                  device: torch.device, preprocessor: Preprocessor):
         """
@@ -68,14 +85,6 @@ class BaseAgent(abc.ABC):
         """
         ...
 
-    def initial_state(self) -> tt.Optional[tt.Any]:
-        """
-        Should create initial empty state for the agent. It will be
-        called for the start of the episode
-        :return: Anything agent want to remember
-        """
-        return None
-
     @torch.no_grad()
     def __call__(self, states: States, agent_states: AgentStates = None) -> tt.Tuple[np.ndarray, AgentStates]:
         """
@@ -97,7 +106,7 @@ class BaseAgent(abc.ABC):
         return actions, new_states
 
 
-class DQNAgent(BaseAgent):
+class DQNAgent(NNAgent):
     """
     DQNAgent is a memoryless DQN agent which calculates Q values
     from the observations and  converts them into the actions using action_selector
@@ -140,7 +149,7 @@ class TargetNet:
         self.target_model.load_state_dict(tgt_state)
 
 
-class PolicyAgent(BaseAgent):
+class PolicyAgent(NNAgent):
     """
     Policy agent gets action probabilities from the model and samples actions from it
     """
@@ -160,7 +169,7 @@ class PolicyAgent(BaseAgent):
         return net_out, agent_states
 
 
-class ActorCriticAgent(BaseAgent):
+class ActorCriticAgent(NNAgent):
     """
     Policy agent which returns policy and value tensors from observations. Value are stored in agent's state
     and could be reused for rollouts calculations by ExperienceSource.

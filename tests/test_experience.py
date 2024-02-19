@@ -1,80 +1,80 @@
+import itertools
+import typing as tt
 import numpy as np
-from unittest import TestCase
+import torch
 
 import gymnasium as gym
 from ptan import experience, agent
-#
-#
-# class DummyAgent(agent.BaseAgent):
-#     def __call__(self, states, agent_states):
-#         if isinstance(states, list):
-#             l = len(states)
-#         else:
-#             l = states.shape[0]
-#         return np.zeros(shape=(l, ), dtype=np.int32), agent_states
-#
-#
-# class CountingEnv(gym.Env):
-#     def __init__(self, limit=5):
-#         self.state = 0
-#         self.limit = limit
-#         self.observation_space = gym.spaces.Discrete(limit)
-#         self.action_space = gym.spaces.Discrete(2)
-#
-#     def reset(self):
-#         self.state = 0
-#         return self.state
-#
-#     def step(self, action):
-#         self.state += 1
-#         done = self.state == self.limit-1
-#         reward = self.state
-#         return self.state, reward, done, {}
-#
-#
-# class TestExperienceSourceSingleEnv(TestCase):
-#     @classmethod
-#     def setUpClass(cls):
-#         cls.env = gym.make("MountainCar-v0")
-#
-#     def test_one_step(self):
-#         exp_source = experience.ExperienceSource(self.env, DummyAgent(), steps_count=1)
-#         for exp in exp_source:
-#             self.assertEqual(1, len(exp))
-#             self.assertIsInstance(exp, tuple)
-#             self.assertIsInstance(exp[0], experience.Experience)
-#             self.assertAlmostEqual(exp[0].reward, -1.0)
-#             self.assertFalse(exp[0].done)
-#             break
-#
-#     def test_two_steps(self):
-#         exp_source = experience.ExperienceSource(self.env, DummyAgent(), steps_count=2)
-#         for exp in exp_source:
-#             self.assertEqual(2, len(exp))
-#             break
-#
-#     def test_short_game(self):
-#         env = gym.make('CartPole-v0')
-#         exp_source = experience.ExperienceSource(env, DummyAgent(), steps_count=1)
-#         for step, exp in enumerate(exp_source):
-#             self.assertIsInstance(exp, tuple)
-#             self.assertIsInstance(exp[0], experience.Experience)
-#             if exp[0].done:
-#                 break
-#
-#
-# class TestExperienceSourceManyEnv(TestCase):
-#     @classmethod
-#     def setUpClass(cls):
-#         cls.envs = [gym.make("MountainCar-v0") for _ in range(10)]
-#
-#     def test_one_step(self):
-#         exp_source = experience.ExperienceSource(self.envs, DummyAgent(), steps_count=1)
-#         for exp in exp_source:
-#             self.assertEqual(1, len(exp))
-#             break
-#
-#
+
+
+class DummyAgent(agent.BaseAgent):
+    def __call__(self, states: agent.States, agent_states: agent.AgentStates = None) -> \
+            tt.Tuple[np.ndarray, agent.AgentStates]:
+        if isinstance(states, list):
+            l = len(states)
+        else:
+            l = states.shape[0]
+        return np.zeros(shape=(l, ), dtype=np.int32), agent_states
+
+    def _net_filter(self, net_out: tt.Any, agent_states: agent.AgentStates) -> \
+            tt.Tuple[torch.Tensor, agent.AgentStates]:
+        return net_out, agent_states
+
+
+class CountingEnv(gym.Env):
+    def __init__(self, limit: int = 5):
+        self.state = 0
+        self.limit = limit
+        self.observation_space = gym.spaces.Discrete(limit)
+        self.action_space = gym.spaces.Discrete(2)
+
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict[str, tt.Any] | None = None,
+    ) -> tuple[gym.core.ObsType, dict[str, tt.Any]]:
+        self.state = 0
+        return self.state, {}
+
+    def step(self, action):
+        self.state += 1
+        done = self.state == self.limit-1
+        reward = self.state
+        return self.state, reward, done, False, {}
+
+
+def test_exp_source_single_env_steps(car_env: gym.Env):
+    exp_source = experience.ExperienceSource(car_env, DummyAgent(), steps_count=1)
+    exp = next(iter(exp_source))
+    assert len(exp) == 1
+    assert isinstance(exp, tuple)
+    assert isinstance(exp[0], experience.Experience)
+    assert exp[0].reward == -1
+    assert not exp[0].done_trunc
+
+    exp_source = experience.ExperienceSource(car_env, DummyAgent(), steps_count=2)
+    exp = next(iter(exp_source))
+    assert len(exp) == 2
+
+
+def test_exp_source_single_env_short_game(cartpole_env: gym.Env):
+    exp_source = experience.ExperienceSource(cartpole_env, DummyAgent(), steps_count=1)
+    for step_idx, exp in enumerate(exp_source):
+        assert len(exp) == 1
+        if exp[0].done_trunc:
+            assert step_idx < 20
+            break
+
+
+def test_exp_source_many_envs():
+    envs = [gym.make("MountainCar-v0") for _ in range(10)]
+    exp_source = experience.ExperienceSource(envs, DummyAgent(), steps_count=1)
+
+    exp = next(iter(exp_source))
+    assert len(exp) == 1
+
+
 # class StatefulAgent(agent.BaseAgent):
 #     def __init__(self, action_space):
 #         super(StatefulAgent, self).__init__()
