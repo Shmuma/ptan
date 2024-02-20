@@ -106,6 +106,23 @@ def test_exp_source_stateful():
         if len(exp) != steps:
             assert exp[-1].done_trunc
 
+    rw_steps = exp_source.pop_rewards_steps()
+    assert isinstance(rw_steps, list)
+    rw = exp_source.pop_total_rewards()
+    assert isinstance(rw, list)
+
+
+def test_firstlast():
+    env = CountingEnv()
+    agent = DummyAgent()
+    exp_source = experience.ExperienceSourceFirstLast(env, agent, gamma=1.0, steps_count=1)
+    states = []
+    for idx, exp in enumerate(exp_source):
+        states.append(exp.state)
+        if idx > 5:
+            break
+    assert states == [0, 1, 2, 3, 0, 1, 2]
+
 
 #
 # class TestExperienceReplayBuffer(TestCase):
@@ -148,17 +165,5 @@ def test_exp_source_stateful():
 #         r = experience._group_list([1, 2, 3], [1, 2])
 #         self.assertEqual(r, [[1], [2, 3]])
 #
-#
-# class TestExperienceSourceFirstLast(TestCase):
-#     def test_simple(self):
-#         env = CountingEnv()
-#         agent = DummyAgent()
-#         exp_source = experience.ExperienceSourceFirstLast(env, agent, gamma=1.0, steps_count=1)
-#         states = []
-#         for idx, exp in enumerate(exp_source):
-#             states.append(exp.state)
-#             if idx > 5:
-#                 break
-#         # NB: there is no last state(4), as we don't record it
-#         self.assertEquals(states, [0, 1, 2, 3, 0, 1, 2])
-#
+
+

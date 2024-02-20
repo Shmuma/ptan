@@ -78,9 +78,9 @@ class ExperienceSource:
                     # generate tail of history
                     if 0 < len(history) < self.steps_count:
                         yield tuple(history)
-                    while len(history) >= 1:
-                        yield tuple(history)
+                    while len(history) > 1:
                         history.popleft()
+                        yield tuple(history)
                     self.total_rewards.append(cur_rewards[idx])
                     self.total_steps.append(cur_steps[idx])
                     cur_rewards[idx] = 0.0
@@ -104,8 +104,13 @@ class ExperienceSource:
         return res
 
 
-# those entries are emitted from ExperienceSourceFirstLast. Reward is discounted over the trajectory piece
-ExperienceFirstLast = collections.namedtuple('ExperienceFirstLast', ('state', 'action', 'reward', 'last_state'))
+
+@dataclass
+class ExperienceFirstLast:
+    state: State
+    action: Action
+    reward: float
+    last_state: tt.Optional[State]
 
 
 class ExperienceSourceFirstLast(ExperienceSource):
@@ -116,15 +121,14 @@ class ExperienceSourceFirstLast(ExperienceSource):
 
     If we have partial trajectory at the end of episode, last_state will be None
     """
-    def __init__(self, env, agent, gamma, steps_count=1, steps_delta=1, vectorized=False):
-        assert isinstance(gamma, float)
-        super(ExperienceSourceFirstLast, self).__init__(env, agent, steps_count+1, steps_delta, vectorized=vectorized)
+    def __init__(self, env: gym.Env, agent: BaseAgent, gamma: float, steps_count: int = 1, steps_delta: int = 1):
+        super(ExperienceSourceFirstLast, self).__init__(env, agent, steps_count+1, steps_delta)
         self.gamma = gamma
         self.steps = steps_count
 
-    def __iter__(self):
+    def __iter__(self) -> tt.Generator[ExperienceFirstLast, None, None]:
         for exp in super(ExperienceSourceFirstLast, self).__iter__():
-            if exp[-1].done and len(exp) <= self.steps:
+            if exp[-1].done_trunc and len(exp) <= self.steps:
                 last_state = None
                 elems = exp
             else:
