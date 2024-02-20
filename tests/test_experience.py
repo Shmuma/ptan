@@ -75,40 +75,38 @@ def test_exp_source_many_envs():
     assert len(exp) == 1
 
 
-# class StatefulAgent(agent.BaseAgent):
-#     def __init__(self, action_space):
-#         super(StatefulAgent, self).__init__()
-#         self.action_space = action_space
-#
-#     def initial_state(self):
-#         return 0
-#
-#     def __call__(self, states, agent_states):
-#         new_agent_states = [n+1 for n in agent_states]
-#         actions = [n % self.action_space.n for n in new_agent_states]
-#         return np.array(actions, dtype=np.int32), new_agent_states
-#
-#
-# class TestExperienceSourceStateful(TestCase):
-#     @classmethod
-#     def setUpClass(cls):
-#         cls.envs = [gym.make("CartPole-v0") for _ in range(2)]
-#
-#     def test_state(self):
-#         actions_count = self.envs[0].action_space.n
-#         my_agent = StatefulAgent(self.envs[0].action_space)
-#         steps = 3
-#         exp_source = experience.ExperienceSource(self.envs, my_agent, steps_count=steps)
-#
-#         for _, exp in zip(range(100), exp_source):
-#             prev_act = None
-#             for e in exp:
-#                 if prev_act is not None:
-#                     self.assertEqual(e.action, (prev_act+1) % actions_count)
-#                 prev_act = e.action
-#             if len(exp) != steps:
-#                 self.assertTrue(exp[-1].done)
-#
+class StatefulAgent(agent.BaseAgent):
+    def __init__(self, action_space):
+        super(StatefulAgent, self).__init__()
+        self.action_space = action_space
+
+    def initial_state(self):
+        return 0
+
+    def __call__(self, states, agent_states):
+        new_agent_states = [n+1 for n in agent_states]
+        actions = [n % self.action_space.n for n in new_agent_states]
+        return np.array(actions, dtype=np.int32), new_agent_states
+
+
+def test_exp_source_stateful():
+    envs = [gym.make("CartPole-v1") for _ in range(2)]
+
+    actions_count = envs[0].action_space.n
+    my_agent = StatefulAgent(envs[0].action_space)
+    steps = 3
+    exp_source = experience.ExperienceSource(envs, my_agent, steps_count=steps)
+
+    for _, exp in zip(range(100), exp_source):
+        prev_act: tt.Optional[int] = None
+        for e in exp:
+            if prev_act is not None:
+                assert e.action == (prev_act+1) % actions_count
+            prev_act = e.action
+        if len(exp) != steps:
+            assert exp[-1].done_trunc
+
+
 #
 # class TestExperienceReplayBuffer(TestCase):
 #     @classmethod
