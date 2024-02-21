@@ -124,34 +124,22 @@ def test_firstlast():
     assert states == [0, 1, 2, 3, 0, 1, 2]
 
 
-#
-# class TestExperienceReplayBuffer(TestCase):
-#     @classmethod
-#     def setUpClass(cls):
-#         env = gym.make("MountainCar-v0")
-#         cls.source = experience.ExperienceSource(env, agent=DummyAgent())
-#
-#     def test_len(self):
-#         buf = experience.ExperienceReplayBuffer(self.source, buffer_size=2)
-#         self.assertEqual(0, len(buf))
-#         self.assertEqual([], list(buf))
-#
-#         buf.populate(1)
-#         self.assertEqual(1, len(buf))
-#
-#         buf.populate(2)
-#         self.assertEqual(2, len(buf))
-#
-#     def test_sample(self):
-#         buf = experience.ExperienceReplayBuffer(self.source, buffer_size=10)
-#         buf.populate(10)
-#         b = buf.sample(4)
-#         self.assertEqual(4, len(b))
-#
-#         buf_ids = list(map(id, buf))
-#         check = list(map(lambda v: id(v) in buf_ids, b))
-#         self.assertTrue(all(check))
-#
-#         b = buf.sample(20)
-#         self.assertEqual(10, len(b))
-#
+def test_replaybuffer(car_env):
+    source = experience.ExperienceSource(car_env, agent=DummyAgent())
+    buf = experience.ExperienceReplayBuffer(source, buffer_size=2)
+    assert len(buf) == 0
+    assert list(buf) == []
+
+    buf.populate(1)
+    assert len(buf) == 1
+    buf.populate(2)
+    assert len(buf) == 2
+
+    buf = experience.ExperienceReplayBuffer(source, buffer_size=10)
+    buf.populate(10)
+    b = buf.sample(4)
+    assert len(b) == 4
+
+    buf_ids = list(map(id, buf))
+    check = list(map(lambda v: id(v) in buf_ids, b))
+    assert all(check)

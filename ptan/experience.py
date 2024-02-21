@@ -30,6 +30,8 @@ class ExperienceSource:
 
     Every experience contains n list of Experience entries
     """
+    Item = tt.Tuple[Experience, ...]
+
     def __init__(self, env: gym.Env | tt.Collection[gym.Env], agent: BaseAgent,
                  steps_count: int = 2, steps_delta: int = 1):
         """
@@ -51,7 +53,7 @@ class ExperienceSource:
         self.total_steps = []
         self.agent_states = [agent.initial_state() for _ in self.pool]
 
-    def __iter__(self) -> tt.Generator[tt.Tuple[Experience, ...], None, None]:
+    def __iter__(self) -> tt.Generator[Item, None, None]:
         states, histories, cur_rewards, cur_steps = [], [], [], []
         for env in self.pool:
             obs, _ = env.reset()
@@ -102,7 +104,6 @@ class ExperienceSource:
         if res:
             self.total_rewards, self.total_steps = [], []
         return res
-
 
 
 @dataclass
@@ -279,26 +280,23 @@ class ExperienceSourceBuffer:
 
 
 class ExperienceReplayBuffer:
-    def __init__(self, experience_source, buffer_size):
-        assert isinstance(experience_source, (ExperienceSource, type(None)))
-        assert isinstance(buffer_size, int)
+    def __init__(self, experience_source: tt.Optional[ExperienceSource], buffer_size: int):
         self.experience_source_iter = None if experience_source is None else iter(experience_source)
-        self.buffer = []
+        self.buffer: tt.List[ExperienceSource.Item] = []
         self.capacity = buffer_size
         self.pos = 0
 
     def __len__(self):
         return len(self.buffer)
 
-    def __iter__(self):
+    def __iter__(self) -> tt.Iterator[ExperienceSource.Item]:
         return iter(self.buffer)
 
-    def sample(self, batch_size):
+    def sample(self, batch_size: int) -> tt.List[ExperienceSource.Item]:
         """
         Get one random batch from experience replay
-        TODO: implement sampling order policy
-        :param batch_size:
-        :return:
+        :param batch_size: size of the batch to sample
+        :return: list of experience entries
         """
         if len(self.buffer) <= batch_size:
             return self.buffer
@@ -306,14 +304,14 @@ class ExperienceReplayBuffer:
         keys = np.random.choice(len(self.buffer), batch_size, replace=True)
         return [self.buffer[key] for key in keys]
 
-    def _add(self, sample):
+    def _add(self, sample: ExperienceSource.Item):
         if len(self.buffer) < self.capacity:
             self.buffer.append(sample)
         else:
             self.buffer[self.pos] = sample
         self.pos = (self.pos + 1) % self.capacity
 
-    def populate(self, samples):
+    def populate(self, samples: int):
         """
         Populates samples into the buffer
         :param samples: how many samples to populate
@@ -321,6 +319,7 @@ class ExperienceReplayBuffer:
         for _ in range(samples):
             entry = next(self.experience_source_iter)
             self._add(entry)
+
 
 class PrioReplayBufferNaive:
     def __init__(self, exp_source, buf_size, prob_alpha=0.6):
