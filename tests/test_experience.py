@@ -67,6 +67,16 @@ def test_exp_source_single_env_short_game(cartpole_env: gym.Env):
             break
 
 
+def test_exp_source_many_envs_counting():
+    envs = [CountingEnv(), CountingEnv()]
+    exp_source = experience.ExperienceSource(envs, DummyAgent(), steps_count=2)
+    data = []
+    for _, exp in zip(range(10), exp_source):
+        data.append(exp)
+    assert data[0] == data[1]
+    assert data[2] == data[3]
+
+
 def test_exp_source_many_envs():
     envs = [gym.make("MountainCar-v0") for _ in range(10)]
     exp_source = experience.ExperienceSource(envs, DummyAgent(), steps_count=1)
