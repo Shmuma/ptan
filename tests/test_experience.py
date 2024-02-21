@@ -1,6 +1,7 @@
 import itertools
 import typing as tt
 import numpy as np
+import pytest
 import torch
 
 import gymnasium as gym
@@ -75,6 +76,10 @@ def test_exp_source_many_envs_counting():
         data.append(exp)
     assert data[0] == data[1]
     assert data[2] == data[3]
+
+    e = CountingEnv()
+    with pytest.raises(ValueError):
+        experience.ExperienceSource([e, e, CountingEnv()], DummyAgent())
 
 
 def test_exp_source_many_envs():

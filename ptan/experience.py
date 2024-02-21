@@ -44,6 +44,10 @@ class ExperienceSource:
         assert steps_count >= 1
         if isinstance(env, (list, tuple)):
             self.pool = env
+            # do the check for the multiple copies passed
+            ids = set(id(e) for e in env)
+            if len(ids) < len(env):
+                raise ValueError("You passed single environment instance multiple times")
         else:
             self.pool = [env]
         self.agent = agent
