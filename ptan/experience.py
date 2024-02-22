@@ -33,13 +33,15 @@ class ExperienceSource:
     Item = tt.Tuple[Experience, ...]
 
     def __init__(self, env: gym.Env | tt.Collection[gym.Env], agent: BaseAgent,
-                 steps_count: int = 2, steps_delta: int = 1):
+                 steps_count: int = 2, steps_delta: int = 1,
+                 env_seed: tt.Optional[int] = None):
         """
         Create simple experience source
         :param env: environment or list of environments to be used
         :param agent: callable to convert batch of states into actions to take
         :param steps_count: count of steps to track for every experience chain
         :param steps_delta: how many steps to do between experience items
+        :param env_seed: seed to be used in Env.reset() call
         """
         assert steps_count >= 1
         if isinstance(env, (list, tuple)):
@@ -56,11 +58,12 @@ class ExperienceSource:
         self.total_rewards = []
         self.total_steps = []
         self.agent_states = [agent.initial_state() for _ in self.pool]
+        self.env_seed = env_seed
 
     def __iter__(self) -> tt.Generator[Item, None, None]:
         states, histories, cur_rewards, cur_steps = [], [], [], []
         for env in self.pool:
-            obs, _ = env.reset()
+            obs, _ = env.reset(seed=self.env_seed)
             states.append(obs)
             histories.append(deque(maxlen=self.steps_count))
             cur_rewards.append(0.0)
@@ -91,7 +94,7 @@ class ExperienceSource:
                     self.total_steps.append(cur_steps[idx])
                     cur_rewards[idx] = 0.0
                     cur_steps[idx] = 0
-                    states[idx], _ = env.reset()
+                    states[idx], _ = env.reset(seed=self.env_seed)
                     self.agent_states[idx] = self.agent.initial_state()
                     history.clear()
             iter_idx += 1
@@ -126,8 +129,9 @@ class ExperienceSourceFirstLast(ExperienceSource):
 
     If we have partial trajectory at the end of episode, last_state will be None
     """
-    def __init__(self, env: gym.Env, agent: BaseAgent, gamma: float, steps_count: int = 1, steps_delta: int = 1):
-        super(ExperienceSourceFirstLast, self).__init__(env, agent, steps_count+1, steps_delta)
+    def __init__(self, env: gym.Env, agent: BaseAgent, gamma: float,
+                 steps_count: int = 1, steps_delta: int = 1, env_seed: tt.Optional[int] = None):
+        super(ExperienceSourceFirstLast, self).__init__(env, agent, steps_count+1, steps_delta, env_seed=env_seed)
         self.gamma = gamma
         self.steps = steps_count
 
@@ -158,6 +162,7 @@ def discount_with_dones(rewards, dones, gamma):
 
 class ExperienceSourceRollouts:
     """
+    TODO: need to be updated
     N-step rollout experience source following A3C rollouts scheme. Have to be used with agent,
     keeping the value in its state (for example, agent.ActorCriticAgent).
 
