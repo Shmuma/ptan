@@ -16,7 +16,7 @@ State = np.ndarray
 Action = int
 
 
-@dataclass
+@dataclass(frozen=True)
 class Experience:
     state: State
     action: Action
@@ -113,7 +113,7 @@ class ExperienceSource:
         return res
 
 
-@dataclass
+@dataclass(frozen=True)
 class ExperienceFirstLast:
     state: State
     action: Action
