@@ -46,20 +46,21 @@ class BufferWrapper(gym.ObservationWrapper):
 
 def wrap_dqn(env: gym.Env, stack_frames: int = 4,
              episodic_life: bool = True, clip_reward: bool = True,
-             noop_map: int = 0) -> gym.Env:
+             noop_max: int = 0) -> gym.Env:
     """
     Apply a common set of wrappers for Atari games.
     :param env: Environment to wrap
     :param stack_frames: count of frames to stack, default=4
     :param episodic_life: convert life to end of episode
     :param clip_reward: reward clipping
-    :param noop_map: how many NOOP actions to execute
+    :param noop_max: how many NOOP actions to execute
     :return: wrapped environment
     """
     assert 'NoFrameskip' in env.spec.id
     env = atari_wrappers.AtariWrapper(
-        env, clip_reward=clip_reward, noop_max=noop_map,
+        env, clip_reward=clip_reward, noop_max=noop_max,
         terminal_on_life_loss=episodic_life)
     env = ImageToPyTorch(env)
-    env = BufferWrapper(env, stack_frames)
+    if stack_frames > 1:
+        env = BufferWrapper(env, stack_frames)
     return env
