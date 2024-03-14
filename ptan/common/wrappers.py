@@ -61,6 +61,5 @@ def wrap_dqn(env: gym.Env, stack_frames: int = 4,
         env, clip_reward=clip_reward, noop_max=noop_max,
         terminal_on_life_loss=episodic_life)
     env = ImageToPyTorch(env)
-    if stack_frames > 1:
-        env = BufferWrapper(env, stack_frames)
+    env = BufferWrapper(env, stack_frames)
     return env
