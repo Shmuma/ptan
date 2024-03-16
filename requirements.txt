@@ -1,7 +1,10 @@
-numpy
-opencv-python
-gym
-atari-py
-nose
-torch==1.7.0
-torch-ignite==0.4.2
+gymnasium[atari]==0.29.1
+gymnasium[classic-control]==0.29.1
+moviepy==1.0.3
+numpy==1.26.3
+opencv-python==4.9.0.80
+torch==2.2.0
+torchvision==0.17.0
+pytorch-ignite==0.4.13
+stable-baselines3==2.2.1
+pyarrow==15.0.0

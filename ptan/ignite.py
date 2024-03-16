@@ -1,5 +1,4 @@
 import ptan
-import enum
 import time
 from typing import Optional
 from ignite.engine import Engine, State
@@ -135,4 +134,3 @@ class PeriodicEvents:
         for period, event in self.INTERVAL_TO_EVENT.items():
             if engine.state.iteration % period == 0:
                 engine.fire_event(event)
-

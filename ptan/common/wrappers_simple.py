@@ -1,7 +1,7 @@
 """
 Simple wrappers
 """
-import gym
+import gymnasium as gym
 import numpy as np
 import collections
 
@@ -16,23 +16,24 @@ class FrameStack1D(gym.Wrapper):
         assert len(env.observation_space.shape) == 1
         super(FrameStack1D, self).__init__(env)
         self.k = k
-        self.frames = collections.deque([], maxlen=k)
+        self.frames = collections.deque(maxlen=k)
         shp = env.observation_space.shape
-        self.observation_space = gym.spaces.Box(low=np.min(env.observation_space.low),
-                                                high=np.max(env.observation_space.high),
-                                                shape=(env.observation_space.shape[0]*k,),
-                                                dtype=env.observation_space.dtype)
+        self.observation_space = gym.spaces.Box(
+            low=np.min(env.observation_space.low),
+            high=np.max(env.observation_space.high),
+            shape=(env.observation_space.shape[0]*k,),
+            dtype=env.observation_space.dtype)
 
     def reset(self):
-        ob = self.env.reset()
+        ob, extra = self.env.reset()
         for _ in range(self.k):
             self.frames.append(ob)
-        return self._get_ob()
+        return self._get_ob(), extra
 
     def step(self, action):
-        ob, reward, done, info = self.env.step(action)
+        ob, reward, done, trunc, info = self.env.step(action)
         self.frames.append(ob)
-        return self._get_ob(), reward, done, info
+        return self._get_ob(), reward, done, trunc, info
 
     def _get_ob(self):
         assert len(self.frames) == self.k
