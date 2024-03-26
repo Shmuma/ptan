@@ -1,5 +1,5 @@
-gymnasium[atari]==0.29.1
-gymnasium[classic-control]==0.29.1
+gymnasium[atari]>=0.29.0
+gymnasium[classic-control]>=0.29.0
 moviepy==1.0.3
 numpy==1.26.3
 opencv-python==4.9.0.80
