@@ -1,8 +1,8 @@
 import collections
-import itertools
 import typing as tt
 import numpy as np
 import pytest
+from pytest import approx
 import torch
 
 import gymnasium as gym
@@ -169,15 +169,30 @@ def test_vecsync_exp_simple():
     exp = experience.VectorExperienceSourceFirstLast(
         env, DummyAgent(), gamma=1, steps_count=1,
         env_seed=42)
-#    e = next(iter(exp))
-#    assert isinstance(e, list)
-#    assert len(e) == 2
+    e = next(iter(exp))
+    assert isinstance(e, list)
+    assert len(e) == 2
+    assert e[0].reward == -2
+    assert e[0].state == approx(np.array([-0.4452088, 0]))
+    assert e[0].last_state == approx(np.array([-0.4499448, -0.00315349]))
 
 
 def test_vector_rewards():
     q = collections.deque()
     q.append(np.array([1, 2, 3], dtype=np.float32))
     q.append(np.array([2, 3, 4], dtype=np.float32))
-    r = experience.vector_rewards(q, gamma=1.0)
+    dones = collections.deque()
+    dones.append(np.array([False, False, False], dtype=bool))
+    dones.append(np.array([False, False, False], dtype=bool))
+    r = experience.vector_rewards(q, dones, gamma=1.0)
     assert r == pytest.approx(np.array([3, 5, 7]))
 
+    r = experience.vector_rewards(q, dones, gamma=0.99)
+    assert r == pytest.approx(np.array([2.98, 4.97, 6.96]))
+
+    # the same example, but now with episode terminated
+    dones.clear()
+    dones.append(np.array([False, True,  False], dtype=bool))
+    dones.append(np.array([True, False, False], dtype=bool))
+    r = experience.vector_rewards(q, dones, gamma=1.0)
+    assert r == pytest.approx(np.array([3, 2, 7]))

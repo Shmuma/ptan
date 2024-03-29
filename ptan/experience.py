@@ -151,17 +151,17 @@ class ExperienceSourceFirstLast(ExperienceSource):
                                       reward=total_reward, last_state=last_state)
 
 
-def vector_rewards(rewards: tt.Deque[np.ndarray], gamma: float) -> np.ndarray:
+def vector_rewards(rewards: tt.Deque[np.ndarray], dones: tt.Deque[np.ndarray], gamma: float) -> np.ndarray:
     """
     Calculate rewards from vectorized environment for given amount of steps.
-    TODO: take into account termination flags
     :param rewards: deque with observed rewards
+    :param dones: deque with bool flags indicating end of episode
     :param gamma: gamma constant
     :return: vector with accumulated rewards
     """
     res = np.zeros(rewards[0].shape[0], dtype=np.float32)
-    for r in reversed(rewards):
-        res *= gamma
+    for r, d in zip(reversed(rewards), reversed(dones)):
+        res *= gamma * (1. - d)
         res += r
     return res
 
@@ -178,14 +178,13 @@ class VectorExperienceSourceFirstLast(ExperienceSource):
         self.steps = steps_count
         self.agent_state = self.agent_states[0]
 
-    def __iter__(self) -> tt.Generator[tt.List[ExperienceSourceFirstLast], None, None]:
+    def __iter__(self) -> tt.Generator[tt.List[ExperienceFirstLast], None, None]:
         q_states = collections.deque(maxlen=self.steps+1)
         q_actions = collections.deque(maxlen=self.steps+1)
         q_rewards = collections.deque(maxlen=self.steps+1)
         q_dones = collections.deque(maxlen=self.steps+1)
 
         obs, _ = self.env.reset(seed=self.env_seed)
-        print(obs)
 
         while True:
             q_states.append(obs)
@@ -198,12 +197,20 @@ class VectorExperienceSourceFirstLast(ExperienceSource):
             if len(q_states) == q_states.maxlen:
                 # enough data for calculation
                 results = []
-                rewards = vector_rewards(q_rewards, self.gamma)
-
-                pass
+                rewards = vector_rewards(q_rewards, q_dones, self.gamma)
+                for i in range(self.env.num_envs):
+                    # if anywhere in the trajectory we have ended episode flag,
+                    # the last state will be None
+                    ep_ended = any(map(lambda d: d[i], q_dones))
+                    last_state = next_obs[i] if not ep_ended else None
+                    results.append(ExperienceFirstLast(
+                        state=q_states[0][i],
+                        action=q_actions[0][i],
+                        reward=rewards[i],
+                        last_state=last_state,
+                    ))
+                yield results
             obs = next_obs
-        pass
-
 
 
 def discount_with_dones(rewards, dones, gamma):
