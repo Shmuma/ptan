@@ -151,6 +151,61 @@ class ExperienceSourceFirstLast(ExperienceSource):
                                       reward=total_reward, last_state=last_state)
 
 
+def vector_rewards(rewards: tt.Deque[np.ndarray], gamma: float) -> np.ndarray:
+    """
+    Calculate rewards from vectorized environment for given amount of steps.
+    TODO: take into account termination flags
+    :param rewards: deque with observed rewards
+    :param gamma: gamma constant
+    :return: vector with accumulated rewards
+    """
+    res = np.zeros(rewards[0].shape[0], dtype=np.float32)
+    for r in reversed(rewards):
+        res *= gamma
+        res += r
+    return res
+
+
+class VectorExperienceSourceFirstLast(ExperienceSource):
+    """
+    ExperienceSourceFirstLast which supports VectorEnv from Gymnasium.
+    """
+    def __init__(self, env: gym.vector.VectorEnv, agent: BaseAgent,
+                 gamma: float, steps_count: int = 1, env_seed: tt.Optional[int] = None):
+        super().__init__(env, agent, steps_count+1, steps_delta=1, env_seed=env_seed)
+        self.env = env
+        self.gamma = gamma
+        self.steps = steps_count
+        self.agent_state = self.agent_states[0]
+
+    def __iter__(self) -> tt.Generator[tt.List[ExperienceSourceFirstLast], None, None]:
+        q_states = collections.deque(maxlen=self.steps+1)
+        q_actions = collections.deque(maxlen=self.steps+1)
+        q_rewards = collections.deque(maxlen=self.steps+1)
+        q_dones = collections.deque(maxlen=self.steps+1)
+
+        obs, _ = self.env.reset(seed=self.env_seed)
+        print(obs)
+
+        while True:
+            q_states.append(obs)
+            actions, self.agent_state = self.agent(obs, self.agent_state)
+            q_actions.append(actions)
+            next_obs, r, is_done, is_tr, _ = self.env.step(actions)
+            q_rewards.append(r)
+            q_dones.append(is_done | is_tr)
+
+            if len(q_states) == q_states.maxlen:
+                # enough data for calculation
+                results = []
+                rewards = vector_rewards(q_rewards, self.gamma)
+
+                pass
+            obs = next_obs
+        pass
+
+
+
 def discount_with_dones(rewards, dones, gamma):
     discounted = []
     r = 0

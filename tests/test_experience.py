@@ -1,3 +1,4 @@
+import collections
 import itertools
 import typing as tt
 import numpy as np
@@ -158,3 +159,25 @@ def test_replaybuffer(car_env):
     buf_ids = list(map(id, buf))
     check = list(map(lambda v: id(v) in buf_ids, b))
     assert all(check)
+
+
+def test_vecsync_exp_simple():
+    env = gym.vector.SyncVectorEnv([
+        lambda: gym.make("MountainCar-v0"),
+        lambda: gym.make("MountainCar-v0"),
+    ])
+    exp = experience.VectorExperienceSourceFirstLast(
+        env, DummyAgent(), gamma=1, steps_count=1,
+        env_seed=42)
+#    e = next(iter(exp))
+#    assert isinstance(e, list)
+#    assert len(e) == 2
+
+
+def test_vector_rewards():
+    q = collections.deque()
+    q.append(np.array([1, 2, 3], dtype=np.float32))
+    q.append(np.array([2, 3, 4], dtype=np.float32))
+    r = experience.vector_rewards(q, gamma=1.0)
+    assert r == pytest.approx(np.array([3, 5, 7]))
+
