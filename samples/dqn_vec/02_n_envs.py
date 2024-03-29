@@ -37,7 +37,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dev", default="cpu", help="Device to use, default=cpu")
     parser.add_argument("--envs", type=int, default=3, help="Amount of environments to run in parallel")
-    parser.add_argument("--use-async", type=bool, default=False, action='store_true')
+    parser.add_argument("--use-async", default=False, action='store_true')
     args = parser.parse_args()
     device = torch.device(args.dev)
 
