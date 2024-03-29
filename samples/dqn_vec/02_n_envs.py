@@ -40,21 +40,21 @@ if __name__ == "__main__":
     args = parser.parse_args()
     device = torch.device(args.dev)
 
-    envs = [
-        ptan.common.wrappers.wrap_dqn(gym.make(params.env_name))
+    env = gym.vector.SyncVectorEnv([
+        lambda: ptan.common.wrappers.wrap_dqn(gym.make(params.env_name))
         for _ in range(args.envs)
-    ]
+    ])
     params.batch_size *= args.envs
 
-    net = dqn_model.DQN(envs[0].observation_space.shape, envs[0].action_space.n).to(device)
+    net = dqn_model.DQN(env.single_observation_space.shape, env.single_action_space.n).to(device)
 
     tgt_net = ptan.agent.TargetNet(net)
     selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=params.epsilon_start)
     epsilon_tracker = common.EpsilonTracker(selector, params)
     agent = ptan.agent.DQNAgent(net, selector, device=device)
 
-    exp_source = ptan.experience.ExperienceSourceFirstLast(
-        envs, agent, gamma=params.gamma, env_seed=common.SEED)
+    exp_source = ptan.experience.VectorExperienceSourceFirstLast(
+        env, agent, gamma=params.gamma, env_seed=common.SEED)
     buffer = ptan.experience.ExperienceReplayBuffer(
         exp_source, buffer_size=params.replay_size)
     optimizer = optim.Adam(net.parameters(), lr=params.learning_rate)

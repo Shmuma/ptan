@@ -171,14 +171,16 @@ class VectorExperienceSourceFirstLast(ExperienceSource):
     ExperienceSourceFirstLast which supports VectorEnv from Gymnasium.
     """
     def __init__(self, env: gym.vector.VectorEnv, agent: BaseAgent,
-                 gamma: float, steps_count: int = 1, env_seed: tt.Optional[int] = None):
+                 gamma: float, steps_count: int = 1, env_seed: tt.Optional[int] = None,
+                 unnest_data: bool = True):
         super().__init__(env, agent, steps_count+1, steps_delta=1, env_seed=env_seed)
         self.env = env
         self.gamma = gamma
         self.steps = steps_count
+        self.unnest_data = unnest_data
         self.agent_state = self.agent_states[0]
 
-    def __iter__(self) -> tt.Generator[tt.List[ExperienceFirstLast], None, None]:
+    def __iter__(self) -> tt.Generator[tt.List[ExperienceFirstLast] | ExperienceFirstLast, None, None]:
         q_states = collections.deque(maxlen=self.steps+1)
         q_actions = collections.deque(maxlen=self.steps+1)
         q_rewards = collections.deque(maxlen=self.steps+1)
@@ -223,7 +225,10 @@ class VectorExperienceSourceFirstLast(ExperienceSource):
                         reward=rewards[i],
                         last_state=last_state,
                     ))
-                yield results
+                if self.unnest_data:
+                    yield from results
+                else:
+                    yield results
             obs = next_obs
 
 

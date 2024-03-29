@@ -190,7 +190,7 @@ def test_vecsync_exp_simple():
     ])
     exp = experience.VectorExperienceSourceFirstLast(
         env, DummyAgent(), gamma=1, steps_count=1,
-        env_seed=42)
+        env_seed=42, unnest_data=False)
     e = next(iter(exp))
     assert isinstance(e, list)
     assert len(e) == 2
@@ -206,7 +206,7 @@ def test_vecsync_exp_dones():
     ])
     exp = experience.VectorExperienceSourceFirstLast(
         env, DummyAgent(), gamma=1, steps_count=1,
-        env_seed=42)
+        env_seed=42, unnest_data=False)
     finish = False
     for es in exp:
         for e in es:
@@ -225,7 +225,7 @@ def test_vec_steps():
         lambda: NStepEnv(5),
     ])
     exp = experience.VectorExperienceSourceFirstLast(
-        env, DummyAgent(), gamma=0.9, steps_count=1
+        env, DummyAgent(), gamma=0.9, steps_count=1, unnest_data=False
     )
     done_counts = 0
     data = []
