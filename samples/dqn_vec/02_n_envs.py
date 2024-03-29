@@ -37,13 +37,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dev", default="cpu", help="Device to use, default=cpu")
     parser.add_argument("--envs", type=int, default=3, help="Amount of environments to run in parallel")
+    parser.add_argument("--use-async", type=bool, default=False, action='store_true')
     args = parser.parse_args()
     device = torch.device(args.dev)
 
-    env = gym.vector.SyncVectorEnv([
+    envs = [
         lambda: ptan.common.wrappers.wrap_dqn(gym.make(params.env_name))
         for _ in range(args.envs)
-    ])
+    ]
+    if args.use_async:
+        env = gym.vector.AsyncVectorEnv(envs)
+    else:
+        env = gym.vector.SyncVectorEnv(envs)
     params.batch_size *= args.envs
 
     net = dqn_model.DQN(env.single_observation_space.shape, env.single_action_space.n).to(device)

@@ -173,6 +173,17 @@ class VectorExperienceSourceFirstLast(ExperienceSource):
     def __init__(self, env: gym.vector.VectorEnv, agent: BaseAgent,
                  gamma: float, steps_count: int = 1, env_seed: tt.Optional[int] = None,
                  unnest_data: bool = True):
+        """
+        Construct vectorized version of ExperienceSourceFirstLast
+        :param env: vectorized environment
+        :param agent: agent to use
+        :param gamma: gamma for reward calculation
+        :param steps_count: count of steps
+        :param env_seed: seed for environments reset
+        :param unnest_data: should we unnest data in the iterator. If True (default)
+        ExperienceFirstLast will be yielded sequentially. If False, we'll keep them in a list as we
+        got them from env vector.
+        """
         super().__init__(env, agent, steps_count+1, steps_delta=1, env_seed=env_seed)
         self.env = env
         self.gamma = gamma
