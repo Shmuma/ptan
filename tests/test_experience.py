@@ -7,6 +7,7 @@ import torch
 
 import gymnasium as gym
 from ptan import experience, agent
+from ptan.experience import ExperienceFirstLast
 
 
 class DummyAgent(agent.BaseAgent):
@@ -44,6 +45,27 @@ class CountingEnv(gym.Env):
         done = self.state == self.limit-1
         reward = self.state
         return self.state, reward, done, False, {}
+
+
+class NStepEnv(gym.Env):
+    """
+    Environment produces zero rewards for given count of steps,
+    then given 1 and dones
+    """
+    def __init__(self, steps: int):
+        self.steps = steps
+        self.counter = 0
+        self.observation_space = gym.spaces.Discrete(100)
+        self.action_space = gym.spaces.Discrete(2)
+
+    def reset(self, *, seed = None, options = None):
+        self.counter = 0
+        return self.counter, {}
+
+    def step(self, action):
+        self.counter += 1
+        done = self.counter == self.steps
+        return self.counter, 1.0 if done else 0.0, done, False, {}
 
 
 def test_exp_source_single_env_steps(car_env: gym.Env):
@@ -175,6 +197,62 @@ def test_vecsync_exp_simple():
     assert e[0].reward == -2
     assert e[0].state == approx(np.array([-0.4452088, 0]))
     assert e[0].last_state == approx(np.array([-0.4499448, -0.00315349]))
+
+
+def test_vecsync_exp_dones():
+    env = gym.vector.SyncVectorEnv([
+        lambda: gym.make("MountainCar-v0"),
+        lambda: gym.make("MountainCar-v0"),
+    ])
+    exp = experience.VectorExperienceSourceFirstLast(
+        env, DummyAgent(), gamma=1, steps_count=1,
+        env_seed=42)
+    finish = False
+    for es in exp:
+        for e in es:
+            if e.last_state is None:
+                finish = True
+                break
+        if finish:
+            break
+    rewards_steps = exp.pop_rewards_steps()
+    assert rewards_steps == [(-200, 200), (-200, 200)]
+
+
+def test_vec_steps():
+    env = gym.vector.SyncVectorEnv([
+        lambda: NStepEnv(4),
+        lambda: NStepEnv(5),
+    ])
+    exp = experience.VectorExperienceSourceFirstLast(
+        env, DummyAgent(), gamma=0.9, steps_count=1
+    )
+    done_counts = 0
+    data = []
+    for es in exp:
+        data.append(es)
+        if es[0].last_state is None:
+            done_counts += 1
+        if done_counts > 2:
+            break
+    assert data == [
+        [ExperienceFirstLast(state=0, action=0, reward=0.0,         last_state=2),
+         ExperienceFirstLast(state=0, action=0, reward=0.0,         last_state=2)],
+        [ExperienceFirstLast(state=1, action=0, reward=0.0,         last_state=3),
+         ExperienceFirstLast(state=1, action=0, reward=0.0,         last_state=3)],
+        [ExperienceFirstLast(state=2, action=0, reward=approx(0.9), last_state=None),
+         ExperienceFirstLast(state=2, action=0, reward=0.0,         last_state=4)],
+        [ExperienceFirstLast(state=3, action=0, reward=1.0,         last_state=None),
+         ExperienceFirstLast(state=3, action=0, reward=approx(0.9), last_state=None)],
+        [ExperienceFirstLast(state=0, action=0, reward=0.0,         last_state=2),
+         ExperienceFirstLast(state=4, action=0, reward=1.0,         last_state=None)],
+        [ExperienceFirstLast(state=1, action=0, reward=0.0,         last_state=3),
+         ExperienceFirstLast(state=0, action=0, reward=0.0,         last_state=2)],
+        [ExperienceFirstLast(state=2, action=0, reward=approx(0.9), last_state=None),
+         ExperienceFirstLast(state=1, action=0, reward=0.0,         last_state=3)],
+    ]
+    rw_steps = exp.pop_rewards_steps()
+    assert rw_steps == [(1.0, 4), (1.0, 5), (1.0, 4)]
 
 
 def test_vector_rewards():

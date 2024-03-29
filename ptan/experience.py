@@ -183,16 +183,30 @@ class VectorExperienceSourceFirstLast(ExperienceSource):
         q_actions = collections.deque(maxlen=self.steps+1)
         q_rewards = collections.deque(maxlen=self.steps+1)
         q_dones = collections.deque(maxlen=self.steps+1)
+        total_rewards = np.zeros(self.env.num_envs, dtype=np.float32)
+        total_steps = np.zeros_like(total_rewards, dtype=np.int64)
 
         obs, _ = self.env.reset(seed=self.env_seed)
+        env_indices = np.arange(self.env.num_envs)
 
         while True:
             q_states.append(obs)
             actions, self.agent_state = self.agent(obs, self.agent_state)
             q_actions.append(actions)
             next_obs, r, is_done, is_tr, _ = self.env.step(actions)
+            total_rewards += r
+            total_steps += 1
+            done_or_tr = is_done | is_tr
             q_rewards.append(r)
-            q_dones.append(is_done | is_tr)
+            q_dones.append(done_or_tr)
+
+            # process environments which are done at this step
+            if done_or_tr.any():
+                indices = env_indices[done_or_tr]
+                self.total_steps.extend(total_steps[indices])
+                self.total_rewards.extend(total_rewards[indices])
+                total_steps[indices] = 0
+                total_rewards[indices] = 0.0
 
             if len(q_states) == q_states.maxlen:
                 # enough data for calculation
