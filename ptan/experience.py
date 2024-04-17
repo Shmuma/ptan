@@ -191,6 +191,24 @@ class VectorExperienceSourceFirstLast(ExperienceSource):
         self.unnest_data = unnest_data
         self.agent_state = self.agent_states[0]
 
+    def _iter_env_idx_obs_next(self, b_obs, b_next_obs) -> tt.Generator[tt.Tuple[
+        int, tt.Any, tt.Any
+    ], None, None]:
+        """
+        Iterate over individual environment observations and next observations.
+        Take into account Tuple observation space (which is handled specially in Vectorized envs)
+        :param b_obs: vectorized observations
+        :param b_next_obs: vectorized next observations
+        :yields: Tuple of index, observation and next observation
+        """
+        if isinstance(self.env.single_observation_space, gym.spaces.Tuple):
+            obs_iter = zip(*b_obs)
+            next_obs_iter = zip(*b_next_obs)
+        else:
+            obs_iter = b_obs
+            next_obs_iter = b_next_obs
+        yield from zip(range(self.env.num_envs), obs_iter, next_obs_iter)
+
     def __iter__(self) -> tt.Generator[tt.List[ExperienceFirstLast] | ExperienceFirstLast, None, None]:
         q_states = collections.deque(maxlen=self.steps+1)
         q_actions = collections.deque(maxlen=self.steps+1)
@@ -225,13 +243,13 @@ class VectorExperienceSourceFirstLast(ExperienceSource):
                 # enough data for calculation
                 results = []
                 rewards = vector_rewards(q_rewards, q_dones, self.gamma)
-                for i in range(self.env.num_envs):
+                for i, e_obs, e_next_obs in self._iter_env_idx_obs_next(q_states[0], next_obs):
                     # if anywhere in the trajectory we have ended episode flag,
                     # the last state will be None
                     ep_ended = any(map(lambda d: d[i], q_dones))
-                    last_state = next_obs[i] if not ep_ended else None
+                    last_state = e_next_obs if not ep_ended else None
                     results.append(ExperienceFirstLast(
-                        state=q_states[0][i],
+                        state=e_obs,
                         action=q_actions[0][i],
                         reward=rewards[i],
                         last_state=last_state,
