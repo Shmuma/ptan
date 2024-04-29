@@ -63,7 +63,10 @@ class ExperienceSource:
     def __iter__(self) -> tt.Generator[Item, None, None]:
         states, histories, cur_rewards, cur_steps = [], [], [], []
         for env in self.pool:
-            obs, _ = env.reset(seed=self.env_seed)
+            if self.env_seed is not None:
+                obs, _ = env.reset(seed=self.env_seed)
+            else:
+                obs, _ = env.reset()
             states.append(obs)
             histories.append(deque(maxlen=self.steps_count))
             cur_rewards.append(0.0)
@@ -94,7 +97,10 @@ class ExperienceSource:
                     self.total_steps.append(cur_steps[idx])
                     cur_rewards[idx] = 0.0
                     cur_steps[idx] = 0
-                    states[idx], _ = env.reset(seed=self.env_seed)
+                    if self.env_seed is not None:
+                        states[idx], _ = env.reset(seed=self.env_seed)
+                    else:
+                        states[idx], _ = env.reset()
                     self.agent_states[idx] = self.agent.initial_state()
                     history.clear()
             iter_idx += 1
@@ -217,7 +223,10 @@ class VectorExperienceSourceFirstLast(ExperienceSource):
         total_rewards = np.zeros(self.env.num_envs, dtype=np.float32)
         total_steps = np.zeros_like(total_rewards, dtype=np.int64)
 
-        obs, _ = self.env.reset(seed=self.env_seed)
+        if self.env_seed is not None:
+            obs, _ = self.env.reset(seed=self.env_seed)
+        else:
+            obs, _ = self.env.reset()
         env_indices = np.arange(self.env.num_envs)
 
         while True:
