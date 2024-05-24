@@ -82,7 +82,7 @@ class ExperienceSource:
                 next_state, r, is_done, is_tr, _ = env.step(action)
                 cur_rewards[idx] += r
                 cur_steps[idx] += 1
-                history.append(Experience(state=state, action=action, reward=float(r), done_trunc=is_done or is_tr))
+                history.append(Experience(state=state, action=action, reward=r, done_trunc=is_done or is_tr))
                 if len(history) == self.steps_count and iter_idx % self.steps_delta == 0:
                     yield tuple(history)
                 states[idx] = next_state
