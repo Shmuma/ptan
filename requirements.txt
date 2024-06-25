@@ -3,8 +3,8 @@ gymnasium[classic-control]>=0.29.0
 moviepy==1.0.3
 numpy==1.26.3
 opencv-python==4.9.0.80
-torch==2.2.0
-torchvision==0.17.0
+torch==2.3.1
+torchvision==0.18.1
 pytorch-ignite==0.4.13
 stable-baselines3==2.2.1
 pyarrow==15.0.0
