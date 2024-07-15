@@ -4,7 +4,6 @@ PTAN stands for PyTorch AgentNet -- reimplementation of AgentNet library for pyt
 import pathlib
 import setuptools
 
-
 requirements = pathlib.Path("requirements.txt").read_text().splitlines()
 
 
