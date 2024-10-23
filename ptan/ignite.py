@@ -77,6 +77,7 @@ class EpisodeFPSHandler:
     def attach(self, engine: Engine, manual_step: bool = False):
         self._timer.attach(engine, step=None if manual_step else Events.ITERATION_COMPLETED)
         engine.add_event_handler(EpisodeEvents.EPISODE_COMPLETED, self)
+        engine.state.metrics[self.AVG_FPS_METRIC] = -1
 
     def step(self):
         """
@@ -91,7 +92,7 @@ class EpisodeFPSHandler:
         if engine.state.iteration > 1:
             fps = self._fps_mul / t_val
             avg_fps = engine.state.metrics.get(self.AVG_FPS_METRIC)
-            if avg_fps is None:
+            if avg_fps is None or avg_fps < 0.0:
                 avg_fps = fps
             else:
                 avg_fps *= self._fps_smooth_alpha
