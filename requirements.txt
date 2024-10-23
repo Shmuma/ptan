@@ -1,10 +1,9 @@
 gymnasium[atari]>=0.29.0
 gymnasium[classic-control]>=0.29.0
 moviepy==1.0.3
-numpy==1.26.3
-opencv-python==4.9.0.80
-torch==2.3.1
-torchvision==0.18.1
-pytorch-ignite==0.4.13
-stable-baselines3==2.2.1
-pyarrow==15.0.0
+numpy==2.1.2
+opencv-python==4.10.0.84
+torch==2.5.0
+torchvision==0.20.0
+pytorch-ignite==0.5.1
+stable-baselines3==2.3.2
