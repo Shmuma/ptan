@@ -28,7 +28,7 @@ def default_states_preprocessor(states: States) -> torch.Tensor:
         if len(states) == 1:
             np_states = np.expand_dims(states[0], 0)
         else:
-            np_states = np.array([np.array(s, copy=False) for s in states], copy=False)
+            np_states = np.asarray([np.asarray(s) for s in states])
     else:
         np_states = states
     return torch.as_tensor(np_states)
