@@ -1,7 +1,7 @@
 gymnasium[atari]>=0.29.0
 gymnasium[classic-control]>=0.29.0
 moviepy==1.0.3
-numpy==2.1.2
+numpy<2
 opencv-python==4.10.0.84
 torch==2.5.0
 torchvision==0.20.0

@@ -13,7 +13,7 @@ setuptools.setup(
     author_email="max.lapan@gmail.com",
     license='GPL-v3',
     description="PyTorch reinforcement learning framework",
-    version="0.8",
+    version="0.8.1",
     packages=setuptools.find_packages(),
     install_requires=requirements,
 )
