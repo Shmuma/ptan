@@ -1,4 +1,4 @@
-import gymnasium as gym
+﻿import gymnasium as gym
 import torch
 import random
 import collections
@@ -316,7 +316,7 @@ class ExperienceSourceRollouts:
 
     def __iter__(self):
         pool_size = len(self.pool)
-        states = [np.array(e.reset()) for e in self.pool]
+        states = [np.array(e.reset()[0]) for e in self.pool]
         mb_states = np.zeros((pool_size, self.steps_count) + states[0].shape, dtype=states[0].dtype)
         mb_rewards = np.zeros((pool_size, self.steps_count), dtype=np.float32)
         mb_values = np.zeros((pool_size, self.steps_count), dtype=np.float32)
@@ -333,11 +333,11 @@ class ExperienceSourceRollouts:
             dones = []
             new_states = []
             for env_idx, (e, action) in enumerate(zip(self.pool, actions)):
-                o, r, done, _ = e.step(action)
+                o, r, done, tr, _ = e.step(action)
                 total_rewards[env_idx] += r
                 total_steps[env_idx] += 1
                 if done:
-                    o = e.reset()
+                    o = e.reset()[0]
                     self.total_rewards.append(total_rewards[env_idx])
                     self.total_steps.append(total_steps[env_idx])
                     total_rewards[env_idx] = 0.0
@@ -568,7 +568,7 @@ class QLearningPreprocessor(BatchPreprocessor):
         self.model = model
         self.target_model = target_model
         self.use_double_dqn = use_double_dqn
-        self.batch_dt_error_hook = batch_td_error_hook
+        self.batch_td_error_hook = batch_td_error_hook
         self.gamma = gamma
         self.device = device
 
@@ -577,8 +577,8 @@ class QLearningPreprocessor(BatchPreprocessor):
         return QLearningPreprocessor(model=model, target_model=None, use_double_dqn=False, **kwargs)
 
     @staticmethod
-    def target_dqn(model, target_model, **kwards):
-        return QLearningPreprocessor(model, target_model, use_double_dqn=False, **kwards)
+    def target_dqn(model, target_model, **kwargs):
+        return QLearningPreprocessor(model, target_model, use_double_dqn=False, **kwargs)
 
     @staticmethod
     def double_dqn(model, target_model, **kwargs):
@@ -647,7 +647,7 @@ class QLearningPreprocessor(BatchPreprocessor):
 
         for idx, (total_reward, exps) in enumerate(zip(rewards, batch)):
             # game is done, no final reward
-            if exps[-1].done:
+            if exps[-1].done_trunc:
                 total_reward = 0.0
             for exp in reversed(exps[:-1]):
                 total_reward *= self.gamma
